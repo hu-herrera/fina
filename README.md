@@ -9,4 +9,4 @@ Los datos sintéticos necesarios para mostrar topologías, direcciones y presupu
 
 Para ejecutar localmente, servir esta carpeta con un servidor HTTP estático o abrir index.html. No requiere credenciales.
 
-No subir credenciales, capturas sensibles, certificados ni contraseñas al repositorio.
+
