@@ -9,4 +9,6 @@ Los datos sintéticos necesarios para mostrar topologías, direcciones y presupu
 
 Para ejecutar localmente, servir esta carpeta con un servidor HTTP estático o abrir index.html. No requiere credenciales.
 
+**Alcance:** los equipos, enlaces, direcciones y pruebas corresponden a un laboratorio académico simulado; no prueban disponibilidad real, RTO ni certificación de hardware.
 
+**Seguridad:** no subir credenciales, contraseñas, certificados, claves privadas, capturas sensibles ni archivos reales de clientes. Los valores `LAB-ONLY` son marcadores ficticios de demostración y no deben utilizarse en producción.
