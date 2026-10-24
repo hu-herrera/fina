@@ -3184,7 +3184,7 @@ function _refresh(){
   rememberTopologyView();
   invalidateSitePing('El estado de la red cambió. Envía otro ping para evaluar la ruta actual.');
   clearPacketSimulation('El estado de la red cambió. Repite el ping para evaluar la ruta actual.');
-  renderMap(); if(ST.mode==='antes')renderFlowLines(); renderAntenas(); updateMetrics();
+  renderMap(); renderFlowLines(); renderAntenas(); updateMetrics();
   if(ST.selId) renderDetail(ST.selId);
   if(SM_TAB==='ping'&&document.getElementById('ping-source-host')){
     const source=document.getElementById('ping-source-host'),value=source.value;
@@ -6916,19 +6916,19 @@ addLog('Modo DESPUÉS: 23 sedes + 4 enlaces inalámbricos + satélites LEO','ok'
 addLog('Base ANTES cargada: routers, switches PoE, teléfonos IP y datacenter existentes','warn');
 addLog('Click en sede/satélite/torre/proveedor → modal de configuración','ok');
 </script>
-<script src="./network/c5-data.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/c5-data.js?v=wan-afinamiento-20261024-r3"></script>
 <script src="./network/legacy-inventory.js"></script>
-<script src="./network/legacy-baseline.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/legacy-baseline.js?v=wan-afinamiento-20261024-r3"></script>
 <script src="./network/c4-data.js"></script>
 <script src="./network/c4-model.js"></script>
 <script src="./network/c4-app.js"></script>
-<script src="./network/c5-model.js?v=wan-afinamiento-20261024-r2"></script>
-<script src="./network/c5-security.js?v=wan-afinamiento-20261024-r2"></script>
-<script src="./network/c5-device-config.js?v=wan-afinamiento-20261024-r2"></script>
-<script src="./network/c5-app.js?v=wan-afinamiento-20261024-r2"></script>
-<link rel="stylesheet" href="./network/client-presentation.css?v=wan-afinamiento-20261024-r2">
-<script src="./network/client-story.js?v=wan-afinamiento-20261024-r2"></script>
-<script src="./network/client-presentation.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/c5-model.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/c5-security.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/c5-device-config.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/c5-app.js?v=wan-afinamiento-20261024-r3"></script>
+<link rel="stylesheet" href="./network/client-presentation.css?v=wan-afinamiento-20261024-r3">
+<script src="./network/client-story.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/client-presentation.js?v=wan-afinamiento-20261024-r3"></script>
 <script src="./network/packet-workbench.js?v=client-20261023"></script>
 </body>
 </html>
