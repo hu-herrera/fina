@@ -52,5 +52,20 @@ function access(s,state,pc,z=inspect(s,state)){
  return {pcMode:wired?'wired':pcWifi?'wifi':'down',phoneMode:wired?'wired':phoneWifi?'wifi':'down',switch:wired?pc.sw:pcWifi?ap.switch:null,phoneSwitch:wired?pc.sw:phoneWifi?phoneAp.switch:null,ap:pcWifi?ap.id:null,phoneAp:phoneWifi?phoneAp.id:null,local:wired||pcWifi,network:(wired||pcWifi)&&z.gatewayAvailable,pcIp:pcWifi?s.endpoints[pc.idx-1].wifi_pc_reserved:pc.ip,phoneIp:phoneWifi?s.endpoints[pc.idx-1].wifi_phone_reserved:pc.phoneIp,recoveryMeasured:false};
 }
 function choosePath(s,z,member){return z.paths.find(p=>p.switch===member&&p.wan===z.activeWan&&p.edge===z.activeEdge)||z.paths.find(p=>p.switch===member&&p.wan===z.activeWan)||(z.interMemberL2?z.paths.find(p=>p.wan===z.activeWan):null)||null;}
-return Object.freeze({MW,makeState,endpoints,inspect,access,choosePath});
+function recoveryAudit(s){
+ if(!s.datacenter_ha?.enabled)throw Error('La prueba requiere el datacenter con HA.');
+ const tests=[
+  {label:'Caída DC-01: aplicación y BD pasan a DC-02',faults:['dc1'],check:z=>z.dc.activeApplicationHost==='dc2'&&z.dc.servicesHost},
+  {label:'Caída DC-02: servicios pasan a DC-01',faults:['dc2'],check:z=>z.dc.activeServicesHost==='dc1'&&z.dc.applicationHost},
+  {label:'Caída del testigo: dos hosts conservan mayoría',faults:['backup'],check:z=>z.dc.votes===2&&z.dc.applicationHost&&z.dc.servicesHost},
+  {label:'Host y testigo caídos: se detiene por falta de mayoría',faults:['dc1','backup'],check:z=>!z.dc.quorum&&!z.dc.applicationHost&&!z.dc.servicesHost},
+  {label:'Sin fencing: no reinicia la aplicación en otro host',faults:['dc1','cluster:fencing'],check:z=>!z.dc.applicationHost},
+  {label:'Sin réplica: no anuncia recuperación de la aplicación',faults:['dc1','storage:replication'],check:z=>!z.dc.applicationHost},
+  {label:'Caída de SW1: hosts accesibles por la segunda NIC',faults:['sw1'],check:z=>z.dc.hosts.length===2&&z.dc.applicationHost&&z.dc.servicesHost},
+  {label:'Caída de ambos hosts: servicios interrumpidos',faults:['dc1','dc2'],check:z=>!z.dc.applicationHost&&!z.dc.servicesHost}
+ ];
+ const rows=tests.map(t=>{const z=inspect(s,{...makeState(),faults:[...t.faults]});return {label:t.label,faults:t.faults,pass:Boolean(t.check(z)),votes:z.dc.votes,applicationHost:z.dc.activeApplicationHost,servicesHost:z.dc.activeServicesHost};});
+ return {scope:'MODELO_LOGICO',rows,passed:rows.filter(r=>r.pass).length,total:rows.length,rtoTargetSeconds:s.datacenter_ha.recovery_seconds_target,rpoTargetSeconds:s.datacenter_ha.rpo_seconds_target,rtoMeasuredSeconds:null,rpoMeasuredSeconds:null,sessionsPreserved:false,hardwareVerified:false};
+}
+return Object.freeze({MW,makeState,endpoints,inspect,access,choosePath,recoveryAudit});
 });

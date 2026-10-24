@@ -20,6 +20,7 @@ function install(){
  $('story-replay').onclick=()=>go(state.index);$('story-policy').onclick=authorize;
  const traceSlot=document.createElement('aside');traceSlot.id='story-trace-slot';traceSlot.hidden=true;document.querySelector('.client-visual').append(traceSlot);
  $('story-acl').onclick=()=>C5App.openSecurity(route().source);
+ const assurance=document.createElement('button');assurance.id='story-assurance';assurance.type='button';assurance.textContent='QoS / VPN / HA';assurance.onclick=()=>{openSedeModal(route().source);smTab('assurance',document.querySelector('[data-c5-assurance]'));};document.querySelector('.client-actions').append(assurance);
  $('story-topology').onclick=()=>openSedeModal(scene().id==='firewall'?'cm':route().source);
  $('story-variant').onchange=e=>{C5App.setVariant(e.target.value);go(state.index);};
  $('story-fullscreen').onclick=async()=>{try{if(document.fullscreenElement===stage)await document.exitFullscreen();else if(!document.fullscreenElement)await stage.requestFullscreen();}catch(e){$('story-result').textContent='El navegador no permitió pantalla completa. La presentación continúa en esta ventana.';}};
@@ -82,7 +83,7 @@ function go(index){
  $('story-future').hidden=s.id!=='close';$('story-future').textContent='Aperturas previstas: '+story.scope.future.join(', ')+'. No incluidas en las compras actuales.';
  $('stage-progress').textContent=(index+1)+' / '+story.scenes.length;$('stage-prev').disabled=index===0;$('stage-next').disabled=index===story.scenes.length-1;
  $('story-replay').hidden=!s.demo;$('story-policy').hidden=s.id!=='security';$('story-policy').disabled=false;$('story-acl').hidden=s.id!=='security';
- $('story-topology').hidden=s.visual==='budget';
+ $('story-topology').hidden=s.visual==='budget';$('story-assurance').hidden=!['proposal','security','close'].includes(s.id);
  $('story-map-slot').hidden=s.visual!=='map';$('story-diagram').hidden=s.visual!=='topology';$('story-budget').hidden=s.visual!=='budget';$('story-security').hidden=s.visual!=='security';
  traceLayout(s.visual==='map'&&Boolean(s.demo));
  $('story-result').textContent='';$('story-result').className='';

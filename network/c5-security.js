@@ -130,5 +130,45 @@ function ciscoAccess(s){
  lines.push('ip access-list standard C5-VTY-NOC',' 10 permit host '+services.admin,' 999 deny any log','exit','ip ssh version 2','line vty 0 15',' access-class C5-VTY-NOC in',' transport input ssh','exit','! Guardar despues de verificar las pruebas y el acceso de gestion.');
  return lines.join('\n')+'\n';
 }
-return Object.freeze({services,rules,ipv4,inNetwork,classify,evaluate,evaluateReturn,cases,networkPair,ciscoAccess});
+// Proposed class budgets for this academic workload; no DSCP from a client is trusted.
+const qosPolicy=Object.freeze({version:1,shaperPercent:90,scope:'PRESUPUESTO_DE_COLAS_SIMULADO',classes:Object.freeze([
+ Object.freeze({id:'VOICE',name:'Voz de la PBX',percent:20,dscp:'EF',match:'SIP TLS TCP 5061 y RTP UDP 10000–20000 con la PBX; solo flujos permitidos'}),
+ Object.freeze({id:'FINANCIAL',name:'Aplicación financiera',percent:40,dscp:'AF31',match:'Usuarios VLAN10/110 → '+services.app+' TCP443; respuesta de la sesión autorizada'}),
+ Object.freeze({id:'CONTROL',name:'Servicios de red y gestión',percent:10,dscp:'CS2',match:'DNS/NTP, AAA y gestión autorizada; control de routing clasificado en el equipo'}),
+ Object.freeze({id:'BULK',name:'Réplica y respaldo',percent:5,dscp:'CS1',match:'Solo hosts del clúster: réplica TCP22/60000–60050 y backup TCP8007'}),
+ Object.freeze({id:'DEFAULT',name:'Navegación y otros permisos',percent:25,dscp:'BE',match:'Resto del tráfico permitido; las ACL siguen vigentes'})
+])});
+function qosClassify(sites,flow,request=null){
+ const policy=request?evaluateReturn(sites,request,flow):evaluate(sites,flow),original=request?evaluate(sites,request):policy,rule=original.rule;
+ if(policy.action!=='allow')return {classId:'BLOCKED',dscp:'BE',policy:policy.rule,reason:'La QoS no autoriza un flujo bloqueado.'};
+ const f=request||flow;
+ const id=['ALLOW-USERS-APP'].includes(rule)?'FINANCIAL':['ALLOW-VOICE-PBX','ALLOW-VOICE-RTP','ALLOW-PBX-RTP'].includes(rule)?'VOICE':rule==='ALLOW-CLUSTER-BACKUP'||rule==='ALLOW-CLUSTER-CONTROL'&&f.protocol==='tcp'?'BULK':/^(ALLOW-(CORP-|MGMT-|ADMIN-|NMS-|NOC-|CLUSTER-))/.test(rule)?'CONTROL':'DEFAULT';
+ return {classId:id,dscp:qosPolicy.classes.find(c=>c.id===id).dscp,policy:policy.rule,clientDscpTrusted:false};
+}
+function qosAllocation(s,wanId,demand,scenarioUplinkMbps=null){
+ const wan=s.wan_services.find(w=>w.id===wanId);if(!wan)throw Error('Transporte no disponible en esta sede.');
+ if(scenarioUplinkMbps!==null&&(!Number.isFinite(scenarioUplinkMbps)||scenarioUplinkMbps<=0||scenarioUplinkMbps>100000))throw Error('La subida de la simulación debe ser mayor que cero y no superar 100000 Mbps.');
+ const rows=qosPolicy.classes.map(c=>{const offered=demand[c.id]??0;if(!Number.isFinite(offered)||offered<0)throw Error('Demanda de clase inválida.');return {...c,offeredMbps:offered,allocatedMbps:0};});
+ const uplink=scenarioUplinkMbps??wan.up_required_mbps,basis=scenarioUplinkMbps===null?wan.capacity_basis:'ENTRADA_DE_SIMULACION_NO_MEDICION';
+ if(!Number.isFinite(uplink)||uplink<=0)return {status:'CAPACIDAD_NO_DEFINIDA',wan:wan.id,basis,shaperMbps:null,congested:null,rows,hardwareVerified:false};
+ const capacity=uplink*qosPolicy.shaperPercent/100,total=rows.reduce((n,r)=>n+r.offeredMbps,0),congested=total>capacity;
+ // Fluid budget illustration: LLQ voice is bounded to 20% under congestion.
+ // Remaining bandwidth is shared by weights; this is not a packet scheduler benchmark.
+ if(!congested)rows.forEach(r=>r.allocatedMbps=r.offeredMbps);
+ else{
+  rows[0].allocatedMbps=Math.min(rows[0].offeredMbps,capacity*rows[0].percent/100);
+  let remaining=capacity-rows[0].allocatedMbps,waiting=rows.slice(1).filter(r=>r.offeredMbps>0);
+  while(remaining>1e-9&&waiting.length){const weights=waiting.reduce((n,r)=>n+r.percent,0),pool=remaining;
+   for(const r of waiting){const grant=Math.min(r.offeredMbps-r.allocatedMbps,pool*r.percent/weights);r.allocatedMbps+=grant;remaining-=grant;}
+   waiting=waiting.filter(r=>r.offeredMbps-r.allocatedMbps>1e-9);
+  }
+ }
+ return {status:'SIMULADO',wan:wan.id,basis,uplinkMbps:uplink,shaperMbps:capacity,offeredMbps:total,congested,rows:rows.map(r=>({...r,reservedMbps:capacity*r.percent/100,deferredMbps:Math.max(0,r.offeredMbps-r.allocatedMbps)})),hardwareVerified:false,latencyMeasured:false};
+}
+function vpnPlan(s,node,allSites=[s]){
+ const central=s.id==='cm',tunnels=central?allSites.filter(p=>p.id!=='cm').flatMap(p=>p.tunnels||[]):(s.tunnels||[]).filter(t=>!node||t.router===node);
+ const peers=tunnels.map(t=>({tunnel:t.id,transport:t.wan,vrf:t.transport_vrf,localIp:central?t.hub_ip:t.branch_ip,remoteIp:central?t.branch_ip:t.hub_ip,publicEndpoint:t.hub_public_ip,initiator:'SUCURSAL',localIdentity:central?'cm-'+t.hub_endpoint.toLowerCase().replace('cm_','')+'.academic.invalid':t.ike_identity,peerIdentity:central?t.ike_identity:'cm-'+t.hub_endpoint.toLowerCase().replace('cm_','')+'.academic.invalid',identityMatch:'EXACT',identityIsPlaceholder:true}));
+ return {status:'DISEÑO_SIN_SA_REAL',authentication:'CERTIFICADO_IKEV2',ike:{version:2,encryption:'AES-256',integrity:'SHA-256',prf:'SHA-256',dhGroup:19,lifetimeSeconds:28800},esp:{encryption:'AES-256-GCM-16',pfsGroup:19,lifetimeSeconds:3600},natTraversal:true,ports:['UDP500','UDP4500'],innerMtuCandidate:1400,tcpMssIpv4Candidate:1360,peers,secretMaterialIncluded:false,deployable:false,requirements:['Emitir certificados y claves en los equipos; no incorporarlos al repositorio.','Validar CA, vigencia, SAN igual al ID IKE exacto y revocación; sin aceptar identidades distintas.','Preparar hora y consulta de revocación antes del túnel para evitar dependencia circular.','Sustituir RFC5737 y academic.invalid por extremos e identidades asignados en el laboratorio.','Comprobar IKE/Child SA, ida y retorno, NAT-T, MTU y clasificación antes del cifrado en ambos fabricantes.','Medir capacidad con cifrado, inspección y tráfico concurrente; el presupuesto de colas no certifica rendimiento.']};
+}
+return Object.freeze({services,rules,ipv4,inNetwork,classify,evaluate,evaluateReturn,cases,networkPair,ciscoAccess,qosPolicy,qosClassify,qosAllocation,vpnPlan});
 });

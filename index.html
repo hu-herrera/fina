@@ -3489,7 +3489,10 @@ function topologyState(wrap){
 function constrainTopologyView(wrap){
   const svg=wrap?.querySelector('.topo-svg'),viewport=wrap?.querySelector('.topo-viewport');
   if(!svg||!viewport||!viewport.clientWidth||!viewport.clientHeight)return;
-  const state=topologyState(wrap),width=svg.clientWidth*state.scale,height=svg.clientHeight*state.scale;
+  const state=topologyState(wrap),fit=Math.min(1,(viewport.clientWidth-20)/svg.clientWidth,(viewport.clientHeight-20)/svg.clientHeight);
+  state.scale=Number.isFinite(state.scale)?Math.max(fit,Math.min(4,state.scale)):fit;
+  if(!Number.isFinite(state.x))state.x=0;if(!Number.isFinite(state.y))state.y=0;
+  const width=svg.clientWidth*state.scale,height=svg.clientHeight*state.scale;
   const bound=(offset,content,visible)=>content<=visible?(visible-content)/2:Math.max(visible-content-12,Math.min(12,offset));
   state.x=bound(state.x,width,viewport.clientWidth);
   state.y=bound(state.y,height,viewport.clientHeight);
@@ -3566,7 +3569,9 @@ function fitSedeTopology(button){
 }
 
 function zoomTopologyAt(wrap,scale,x,y){
-  const state=topologyState(wrap),next=Math.max(.15,Math.min(4,scale)),ratio=next/state.scale;
+  const viewport=wrap.querySelector('.topo-viewport'),svg=wrap.querySelector('.topo-svg');
+  const fit=Math.min(1,(viewport.clientWidth-20)/svg.clientWidth,(viewport.clientHeight-20)/svg.clientHeight);
+  const state=topologyState(wrap),next=Math.max(fit,Math.min(4,scale)),ratio=next/state.scale;
   state.x=x-(x-state.x)*ratio;state.y=y-(y-state.y)*ratio;state.scale=next;
   applyTopologyTransform(wrap);
   rememberTopologyView();
@@ -6683,7 +6688,15 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
     dot.setAttribute('cx',a[0]+(b[0]-a[0])*fraction);dot.setAttribute('cy',a[1]+(b[1]-a[1])*fraction);
     dot.setAttribute('r',(window.ClientPresentation?.active?7:5)*scale);dot.setAttribute('fill',back?'#65c8ff':'#ffd166');
     if(window.ClientPresentation?.active){path.style.stroke=back?'#65c8ff':'#ffd166';path.style.opacity='.95';}
-    endpointLabels.forEach(label=>{label.setAttribute('font-size',14*scale);label.setAttribute('stroke-width',4*scale);label.setAttribute('dx',12*scale);label.setAttribute('dy',-8*scale);});
+    endpointLabels.forEach(label=>{
+      label.setAttribute('font-size',14*scale);label.setAttribute('stroke-width',4*scale);label.setAttribute('dx',12*scale);label.setAttribute('dy',-8*scale);
+      if(ZOOM.w>=299.999&&ZOOM.h>=1119.999){
+        const box=label.getBoundingClientRect(),frame=document.getElementById('chile-map').getBoundingClientRect(),pad=8;
+        const dx=Math.max(0,frame.left+pad-box.left)-Math.max(0,box.right-frame.right+pad);
+        const dy=Math.max(0,frame.top+pad-box.top)-Math.max(0,box.bottom-frame.bottom+pad);
+        label.setAttribute('dx',(12+dx)*scale);label.setAttribute('dy',(-8+dy)*scale);
+      }
+    });
     markers.forEach((marker,i)=>{marker.setAttribute('r',(i===index?5:2)*scale);marker.setAttribute('fill',i===index?'#ffd166':'#9fb4cc');});
     const key=(back?'reply:':'request:')+index+':'+state.paused;
     if(state.lastStep!==key){
@@ -6903,19 +6916,19 @@ addLog('Modo DESPUÉS: 23 sedes + 4 enlaces inalámbricos + satélites LEO','ok'
 addLog('Base ANTES cargada: routers, switches PoE, teléfonos IP y datacenter existentes','warn');
 addLog('Click en sede/satélite/torre/proveedor → modal de configuración','ok');
 </script>
-<script src="./network/c5-data.js?v=public-20261024"></script>
+<script src="./network/c5-data.js?v=wan-afinamiento-20261024-r2"></script>
 <script src="./network/legacy-inventory.js"></script>
-<script src="./network/legacy-baseline.js?v=public-20261024"></script>
+<script src="./network/legacy-baseline.js?v=wan-afinamiento-20261024-r2"></script>
 <script src="./network/c4-data.js"></script>
 <script src="./network/c4-model.js"></script>
 <script src="./network/c4-app.js"></script>
-<script src="./network/c5-model.js?v=public-20261024"></script>
-<script src="./network/c5-security.js?v=public-20261024"></script>
-<script src="./network/c5-device-config.js?v=public-20261024"></script>
-<script src="./network/c5-app.js?v=public-20261024"></script>
-<link rel="stylesheet" href="./network/client-presentation.css?v=public-20261024">
-<script src="./network/client-story.js?v=public-20261024"></script>
-<script src="./network/client-presentation.js?v=public-20261024"></script>
+<script src="./network/c5-model.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/c5-security.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/c5-device-config.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/c5-app.js?v=wan-afinamiento-20261024-r2"></script>
+<link rel="stylesheet" href="./network/client-presentation.css?v=wan-afinamiento-20261024-r2">
+<script src="./network/client-story.js?v=wan-afinamiento-20261024-r2"></script>
+<script src="./network/client-presentation.js?v=wan-afinamiento-20261024-r2"></script>
 <script src="./network/packet-workbench.js?v=client-20261023"></script>
 </body>
 </html>
