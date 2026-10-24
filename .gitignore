@@ -1,0 +1,24 @@
+# Private and sensitive files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.pcap
+*.pcapng
+credentials*
+secrets*
+evidencia-local/
+lab-evidence/
+capturas/
+docs/
+entregables/
+entrega-profesor/
+material-privado/
+node_modules/
+test-results/
+playwright-report/
