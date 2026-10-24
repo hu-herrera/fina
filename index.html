@@ -2818,7 +2818,7 @@ function showTip(e,s){
 }
 function hideTip(){ document.getElementById('tooltip').classList.remove('vis'); }
 
-const ZOOM = { x: 0, y: 0, w: 300, h: 1120, minW: 4, maxW: 1200 };
+const ZOOM = { x: 0, y: 0, w: 300, h: 1120, minW: 4, maxW: 300 };
 let DRAG = {
   active:false, moved:false, suppressClick:false, pointerId:null,
   startX:0, startY:0, startVX:0, startVY:0, startMatrix:null
@@ -2834,14 +2834,31 @@ let LAST_MAP_RECT=null;
 function fitMapZoomHeight(){
   const rect=document.getElementById('chile-map').getBoundingClientRect();
   if(!LAST_MAP_RECT||!rect.width||!rect.height)return;
+  // Keep the entire country visible whenever the map changes container or enters the presentation.
+  if(window.ClientPresentation?.active || (ZOOM.w>=299.999&&ZOOM.h>=1119.999)){zoomReset();return;}
   const scale=Math.max(ZOOM.w/LAST_MAP_RECT.width,ZOOM.h/LAST_MAP_RECT.height);
   const cx=ZOOM.x+ZOOM.w/2,cy=ZOOM.y+ZOOM.h/2;
   ZOOM.w=rect.width*scale;ZOOM.h=rect.height*scale;
   ZOOM.x=cx-ZOOM.w/2;ZOOM.y=cy-ZOOM.h/2;
   aplicarZoom();
 }
+function constrainMapView(){
+  // Bounds are the actual geographic SVG canvas, not the entire limitless plane.
+  const extentW=300,extentH=1120;
+  if(![ZOOM.x,ZOOM.y,ZOOM.w,ZOOM.h].every(Number.isFinite)||ZOOM.w<=0||ZOOM.h<=0){
+    Object.assign(ZOOM,{x:0,y:0,w:extentW,h:extentH});
+  }
+  const fit=Math.min(1,extentW/ZOOM.w,extentH/ZOOM.h);
+  if(fit<1){
+    const centerX=ZOOM.x+ZOOM.w/2,centerY=ZOOM.y+ZOOM.h/2;
+    ZOOM.w*=fit;ZOOM.h*=fit;ZOOM.x=centerX-ZOOM.w/2;ZOOM.y=centerY-ZOOM.h/2;
+  }
+  ZOOM.x=ZOOM.w>=extentW-1e-6?0:Math.max(0,Math.min(extentW-ZOOM.w,ZOOM.x));
+  ZOOM.y=ZOOM.h>=extentH-1e-6?0:Math.max(0,Math.min(extentH-ZOOM.h,ZOOM.y));
+}
 function aplicarZoom(){
   const m=document.getElementById('chile-map');if(!m)return;
+  constrainMapView();
   m.setAttribute('viewBox',`${ZOOM.x} ${ZOOM.y} ${ZOOM.w} ${ZOOM.h}`);
   const rect=m.getBoundingClientRect();LAST_MAP_RECT={width:rect.width,height:rect.height};
   updateMapMarkerScale();
@@ -2852,9 +2869,8 @@ function mapClientPoint(clientX,clientY){
 }
 function zoomMapAt(clientX,clientY,factor){
   const anchor=mapClientPoint(clientX,clientY);if(!anchor)return;
-  // Scale both dimensions together, including the initial letterboxed country view.
-  // No geographic clamps: the point under the cursor must stay under the cursor.
-  const width=Math.max(ZOOM.minW,Math.min(Math.max(ZOOM.maxW,ZOOM.w),ZOOM.w*factor));
+  // Maintain the cursor anchor while stopping at the country's full extent.
+  const width=Math.max(ZOOM.minW,Math.min(ZOOM.maxW,ZOOM.w*factor));
   const scale=width/ZOOM.w;
   ZOOM.x=anchor.x-(anchor.x-ZOOM.x)*scale;ZOOM.y=anchor.y-(anchor.y-ZOOM.y)*scale;
   ZOOM.w=width;ZOOM.h*=scale;aplicarZoom();
@@ -2869,9 +2885,7 @@ function zoomASede(id){
   ZOOM.h = targetH;
   ZOOM.x = px - targetW/2;
   ZOOM.y = py - targetH/2;
-  ZOOM.x = Math.max(-30, Math.min(330 - ZOOM.w, ZOOM.x));
-  ZOOM.y = Math.max(-30, Math.min(1120 - ZOOM.h, ZOOM.y));
-  aplicarZoom();
+  aplicarZoom(); // Centralized bounds also apply to the selected sede.
 }
 function zoomReset(){
   ZOOM.x = 0; ZOOM.y = 0; ZOOM.w = 300; ZOOM.h = 1120;
@@ -3472,9 +3486,18 @@ function topologyState(wrap){
   return wrap._topologyState || (wrap._topologyState = { scale: 1, x: 0, y: 0 });
 }
 
+function constrainTopologyView(wrap){
+  const svg=wrap?.querySelector('.topo-svg'),viewport=wrap?.querySelector('.topo-viewport');
+  if(!svg||!viewport||!viewport.clientWidth||!viewport.clientHeight)return;
+  const state=topologyState(wrap),width=svg.clientWidth*state.scale,height=svg.clientHeight*state.scale;
+  const bound=(offset,content,visible)=>content<=visible?(visible-content)/2:Math.max(visible-content-12,Math.min(12,offset));
+  state.x=bound(state.x,width,viewport.clientWidth);
+  state.y=bound(state.y,height,viewport.clientHeight);
+}
 function applyTopologyTransform(wrap){
   const svg = wrap?.querySelector('.topo-svg');
   if(!svg) return;
+  constrainTopologyView(wrap);
   const state = topologyState(wrap);
   svg.style.transform = `translate(${state.x}px,${state.y}px) scale(${state.scale})`;
   const zoom = wrap.querySelector('.topo-zoom');
@@ -6582,19 +6605,12 @@ function fitPingRoute(hops){
   if(window.ClientPresentation?.active){for(const id of [ClientStory.demoRoute.source,ClientStory.demoRoute.destination,'cm']){const point=sedePos(SEDES.find(s=>s.id===id));xs.push(point[0]);ys.push(point[1]);}}
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
   const aspect=document.getElementById('map-container').getBoundingClientRect();
-  if(window.ClientPresentation?.active){
-    ZOOM.w=Math.max(80,maxX-minX+60,(maxY-minY+90)*aspect.width/Math.max(aspect.height,1));
-    ZOOM.h=mapZoomHeight(ZOOM.w);ZOOM.x=(minX+maxX)/2-ZOOM.w/2;ZOOM.y=(minY+maxY)/2-ZOOM.h/2;
-    aplicarZoom();return;
-  }
+  // Presentation panels must show the complete network footprint, even during ping animation.
+  if(window.ClientPresentation?.active){zoomReset();return;}
   // Reserve the right side for the trace card, instead of hiding the route behind it.
   const reserve=aspect.width>700?0.55:0.85;
   const width=Math.max(36,(maxX-minX+12)/reserve,(maxY-minY+12)*aspect.width/Math.max(aspect.height,1));
-  if(width>ZOOM.maxW){
-    ZOOM.w=ZOOM.maxW;ZOOM.h=Math.max(mapZoomHeight(ZOOM.w),maxY-minY+24);
-    ZOOM.x=(minX+maxX)/2-ZOOM.w/2;ZOOM.y=(minY+maxY)/2-ZOOM.h/2;
-    aplicarZoom();return;
-  }
+  if(width>ZOOM.maxW){zoomReset();return;}
   ZOOM.w=width;ZOOM.h=mapZoomHeight(ZOOM.w);
   ZOOM.x=(minX+maxX)/2-ZOOM.w*(aspect.width>700?0.3:0.5);
   ZOOM.y=(minY+maxY)/2-ZOOM.h*(aspect.width>700?0.5:0.24);
