@@ -23,6 +23,8 @@ function install(){
  $('story-topology').onclick=()=>openSedeModal(scene().id==='firewall'?'cm':route().source);
  $('story-variant').onchange=e=>{C5App.setVariant(e.target.value);go(state.index);};
  $('story-fullscreen').onclick=async()=>{try{if(document.fullscreenElement===stage)await document.exitFullscreen();else if(!document.fullscreenElement)await stage.requestFullscreen();}catch(e){$('story-result').textContent='El navegador no permitió pantalla completa. La presentación continúa en esta ventana.';}};
+ document.addEventListener('fullscreenchange',()=>{if(state.active&&scene().visual==='map')requestAnimationFrame(zoomReset);});
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{if(state.active&&scene().visual==='map')requestAnimationFrame(zoomReset);}).observe($('story-map-slot'));
  document.addEventListener('keydown',e=>{
   if(!state.active)return;
   if(e.key==='Tab'){
@@ -119,7 +121,7 @@ function securityPanel(){
 }
 function budget(){
  const b=story.budget,full=n=>'$'+n.toLocaleString('es-CL'),short=n=>'$'+(n/1000000).toLocaleString('es-CL',{maximumFractionDigits:1})+' millones';
- $('story-budget').innerHTML='<p class="client-section">CLP · IVA incluido</p><table><thead><tr><th>Concepto</th><th>A</th><th>B</th></tr></thead><tbody>'+[['Compra inicial','initial'],['WAN mensual','monthly'],['Alcance a 60 meses','period']].map(([label,key])=>'<tr><th>'+label+'</th><td title="'+full(b.A[key])+'">'+short(b.A[key])+'</td><td title="'+full(b.B[key])+'">'+short(b.B[key])+'</td></tr>').join('')+'</tbody></table><p>Presupuesto original: '+short(b.original)+'. Las dos opciones requieren aprobación adicional.</p><p>El alcance a cinco años incluye conectividad y las reservas de operación detalladas en el presupuesto.</p><p><a href="https://github.com/hu-herrera/financiera-pacifico-entrega-docente/blob/main/02_Entregables/Entregable_7.pdf" target="_blank" rel="noopener">Detalle A</a> · <a href="https://github.com/hu-herrera/financiera-pacifico-entrega-docente/blob/main/02_Entregables/Entregable_7.pdf" target="_blank" rel="noopener">Detalle B</a></p>';
+ $('story-budget').innerHTML='<p class="client-section">CLP · IVA incluido</p><table><thead><tr><th>Concepto</th><th>A</th><th>B</th></tr></thead><tbody>'+[['Compra inicial','initial'],['WAN mensual','monthly'],['Alcance a 60 meses','period']].map(([label,key])=>'<tr><th>'+label+'</th><td title="'+full(b.A[key])+'">'+short(b.A[key])+'</td><td title="'+full(b.B[key])+'">'+short(b.B[key])+'</td></tr>').join('')+'</tbody></table><p>Presupuesto original: '+short(b.original)+'. Las dos opciones requieren aprobación adicional.</p><p>El alcance a cinco años incluye conectividad y las reservas de operación detalladas en el presupuesto.</p><p><a href="https://github.com/hu-herrera/financiera-pacifico-entrega-docente/blob/main/02_Entregables/Entregable_7.pdf" target="_blank" rel="noopener">Consultar presupuesto y supuestos comparativos A/B · Entregable 7</a></p>';
 }
 function close(){
  if(!state.active)return;
