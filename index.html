@@ -6672,7 +6672,7 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const playback=Number.isFinite(window.PING_PLAYBACK_SPEED)?Math.max(1,Math.min(4,window.PING_PLAYBACK_SPEED)):1;
   const segmentMs=650/playback,segments=(hops.length-1)*2;
   const matrix=document.getElementById('chile-map').getScreenCTM(),pixelsPerUnit=matrix?Math.hypot(matrix.a,matrix.b):1;
-  const durations=hops.slice(1).map((h,i)=>window.ClientPresentation?.active?Math.max(360,Math.min(3500,Math.hypot(h.point[0]-hops[i].point[0],h.point[1]-hops[i].point[1])*pixelsPerUnit*7)):segmentMs);
+  const durations=hops.slice(1).map((h,i)=>{const distance=Math.hypot(h.point[0]-hops[i].point[0],h.point[1]-hops[i].point[1])*pixelsPerUnit;return window.ClientPresentation?.active?Math.max(distance>40?1200:360,Math.min(3500,distance*7)):segmentMs;});
   const roundTrip=[...durations,...durations.slice().reverse()],ends=[];let totalMs=0;
   for(const duration of roundTrip){totalMs+=duration;ends.push(totalMs);}
   function frame(now){
@@ -6916,19 +6916,19 @@ addLog('Modo DESPUÉS: 23 sedes + 4 enlaces inalámbricos + satélites LEO','ok'
 addLog('Base ANTES cargada: routers, switches PoE, teléfonos IP y datacenter existentes','warn');
 addLog('Click en sede/satélite/torre/proveedor → modal de configuración','ok');
 </script>
-<script src="./network/c5-data.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/c5-data.js?v=historias-20261025-r1"></script>
 <script src="./network/legacy-inventory.js"></script>
-<script src="./network/legacy-baseline.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/legacy-baseline.js?v=historias-20261025-r1"></script>
 <script src="./network/c4-data.js"></script>
 <script src="./network/c4-model.js"></script>
 <script src="./network/c4-app.js"></script>
-<script src="./network/c5-model.js?v=wan-afinamiento-20261024-r3"></script>
-<script src="./network/c5-security.js?v=wan-afinamiento-20261024-r3"></script>
-<script src="./network/c5-device-config.js?v=wan-afinamiento-20261024-r3"></script>
-<script src="./network/c5-app.js?v=wan-afinamiento-20261024-r3"></script>
-<link rel="stylesheet" href="./network/client-presentation.css?v=wan-afinamiento-20261024-r3">
-<script src="./network/client-story.js?v=wan-afinamiento-20261024-r3"></script>
-<script src="./network/client-presentation.js?v=wan-afinamiento-20261024-r3"></script>
+<script src="./network/c5-model.js?v=historias-20261025-r1"></script>
+<script src="./network/c5-security.js?v=historias-20261025-r1"></script>
+<script src="./network/c5-device-config.js?v=historias-20261025-r1"></script>
+<script src="./network/c5-app.js?v=historias-20261025-r1"></script>
+<link rel="stylesheet" href="./network/client-presentation.css?v=historias-20261025-r1">
+<script src="./network/client-story.js?v=historias-20261025-r1"></script>
+<script src="./network/client-presentation.js?v=historias-20261025-r1"></script>
 <script src="./network/packet-workbench.js?v=client-20261023"></script>
 </body>
 </html>
