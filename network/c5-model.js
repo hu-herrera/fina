@@ -20,7 +20,7 @@ function inspect(s,state,external={}){
   if(!lan)continue;
   for(const w of s.wan_services){
    if(!up('wan:'+w.id)||!up('upstream:'+w.id)||!up('tunnel:'+edge+':'+w.id)||external[w.id]===false)continue;
-   if(links.some(l=>l.a===edge&&l.b===w.distributor&&l.role.startsWith('WAN_'))&&links.some(l=>l.a==='cpe:'+w.id&&l.b===w.distributor&&l.role==='WAN_ACCESS'))paths.push({switch:member,edge,wan:w.id,distributor:w.distributor});
+   if(links.some(l=>l.a===edge&&l.b===w.distributor&&l.role.startsWith('WAN_')&&(l.role==='WAN_TRUNK'?l.allowed_vlans.includes(w.vlan):l.vlan===w.vlan))&&links.some(l=>l.a==='cpe:'+w.id&&l.b===w.distributor&&l.role==='WAN_ACCESS'&&l.vlan===w.vlan))paths.push({switch:member,edge,wan:w.id,distributor:w.distributor});
   }
  }
  const edge=[state.preferredEdge,...edges].find(e=>paths.some(p=>p.edge===e))||null;
@@ -52,6 +52,12 @@ function access(s,state,pc,z=inspect(s,state)){
  return {pcMode:wired?'wired':pcWifi?'wifi':'down',phoneMode:wired?'wired':phoneWifi?'wifi':'down',switch:wired?pc.sw:pcWifi?ap.switch:null,phoneSwitch:wired?pc.sw:phoneWifi?phoneAp.switch:null,ap:pcWifi?ap.id:null,phoneAp:phoneWifi?phoneAp.id:null,local:wired||pcWifi,network:(wired||pcWifi)&&z.gatewayAvailable,pcIp:pcWifi?s.endpoints[pc.idx-1].wifi_pc_reserved:pc.ip,phoneIp:phoneWifi?s.endpoints[pc.idx-1].wifi_phone_reserved:pc.phoneIp,recoveryMeasured:false};
 }
 function choosePath(s,z,member){return z.paths.find(p=>p.switch===member&&p.wan===z.activeWan&&p.edge===z.activeEdge)||z.paths.find(p=>p.switch===member&&p.wan===z.activeWan)||(z.interMemberL2?z.paths.find(p=>p.wan===z.activeWan):null)||null;}
+function overlayPath(branch,z,hub,hz){
+ if(!z.activeWan||!hz.activeWan||!z.gatewayAvailable||!hz.gatewayAvailable)return false;
+ if(branch.id==='cm')return true;
+ const w=hub.wan_services.find(w=>w.id===hz.activeWan),endpoint='CM_'+hz.activeWan.toUpperCase();
+ return Boolean(w?.carrier_handoff?.static_reachable_ipsec_endpoint_required&&(branch.tunnels||[]).some(t=>t.router===z.activeEdge&&t.wan===z.activeWan&&t.hub_endpoint===endpoint&&t.hub_public_ip===w.carrier_handoff.vip));
+}
 function recoveryAudit(s){
  if(!s.datacenter_ha?.enabled)throw Error('La prueba requiere el datacenter con HA.');
  const tests=[
@@ -67,5 +73,5 @@ function recoveryAudit(s){
  const rows=tests.map(t=>{const z=inspect(s,{...makeState(),faults:[...t.faults]});return {label:t.label,faults:t.faults,pass:Boolean(t.check(z)),votes:z.dc.votes,applicationHost:z.dc.activeApplicationHost,servicesHost:z.dc.activeServicesHost};});
  return {scope:'MODELO_LOGICO',rows,passed:rows.filter(r=>r.pass).length,total:rows.length,rtoTargetSeconds:s.datacenter_ha.recovery_seconds_target,rpoTargetSeconds:s.datacenter_ha.rpo_seconds_target,rtoMeasuredSeconds:null,rpoMeasuredSeconds:null,sessionsPreserved:false,hardwareVerified:false};
 }
-return Object.freeze({MW,makeState,endpoints,inspect,access,choosePath,recoveryAudit});
+return Object.freeze({MW,makeState,endpoints,inspect,access,choosePath,overlayPath,recoveryAudit});
 });

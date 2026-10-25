@@ -26,3 +26,7 @@ Los TXT y JSON incluyen esta política, las identidades IKE exactas y los objeti
 Abrir Presentar y avanzar con Siguiente diapositiva. Cada ejemplo recorre situación inicial, fallo, respuesta y conclusión. El inicio automático puede desactivarse para usar Empezar ejemplo. Pausar/Continuar detiene la secuencia y el paquete; Repetir restaura una escena limpia. Avanzar etapa es opcional. Explorar detalles reúne topología y herramientas técnicas.
 
 Se comparan conexiones, routers, acceso Wi-Fi, permisos y recuperación de servicios. La escena final muestra reparto QoS por clases con valores didácticos. El ejemplo consulta el motor del modelo: no representa una transacción bancaria real. Salir restaura la red previa y cancela las acciones pendientes.
+
+## Continuidad de extremo a extremo
+
+Todas las sedes, incluida Casa Matriz, tienen Starlink, Leo, Entel y WOM en el modelo. E6 conserva camino por móvil. El ejemplo WAN muestra la pérdida sucesiva hasta el último acceso y solo pierde camino al agotar los cuatro. Las nuevas comunicaciones requieren un acceso utilizable en cada extremo, un túnel candidato coincidente, políticas y servicios disponibles. Los móviles centrales requieren una entrega alcanzable bajo los supuestos académicos; conservar camino no equivale a capacidad plena de toda la operación.
