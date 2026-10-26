@@ -30,7 +30,7 @@ function inspect(s,state,external={}){
  const localGateway=s.id==='cm'?members.length>0&&!partition&&ha&&edges.some(e=>links.some(l=>l.a===e&&/^sw[12]$/.test(l.b)&&l.role.startsWith('LAN_'))):members.length>0&&!partition;
  const perSwitch=Object.fromEntries([1,2].map(n=>[n,Boolean(up('sw'+n)&&localGateway)]));
  const serverConnected=id=>up(id)&&links.some(l=>l.a===id&&l.role.startsWith('SERVER_')&&(id==='backup'?l.vlan===50:l.allowed_vlans?.includes(50)&&l.allowed_vlans?.includes(130))&&members.includes(Number(l.b.at(-1))));
- const hosts=s.datacenter_ha?.enabled?s.datacenter_ha.nodes.filter(serverConnected):['dc1','dc2'].filter(up),witness=serverConnected('backup'),votes=hosts.length+(witness?1:0),quorum=!partition&&up('cluster:quorum')&&votes>=2,replication=up('storage:replication');
+ const hosts=s.datacenter_ha?.enabled?s.datacenter_ha.nodes.filter(serverConnected):['dc1','dc2'].filter(up),witness=serverConnected('backup'),votes=hosts.length+(witness?1:0),quorum=!partition&&up('cluster:quorum')&&votes>=2,replication=up('storage:replication')&&up('storage:stale')&&up('storage:inconsistent');
  const selectHost=(preference,original)=>{const next=hosts.includes(preference)?preference:hosts.includes(original)?original:hosts[0];return next&&((next===(preference||original))||quorum&&replication&&up('cluster:fencing'))?next:null;};
  const appHost=selectHost(state.preferredApplicationHost,'dc1'),serviceHost=selectHost(state.preferredServicesHost,'dc2');
  if(s.datacenter_ha?.enabled&&quorum&&appHost)state.preferredApplicationHost=appHost;if(s.datacenter_ha?.enabled&&quorum&&serviceHost)state.preferredServicesHost=serviceHost;
@@ -73,5 +73,43 @@ function recoveryAudit(s){
  const rows=tests.map(t=>{const z=inspect(s,{...makeState(),faults:[...t.faults]});return {label:t.label,faults:t.faults,pass:Boolean(t.check(z)),votes:z.dc.votes,applicationHost:z.dc.activeApplicationHost,servicesHost:z.dc.activeServicesHost};});
  return {scope:'MODELO_LOGICO',rows,passed:rows.filter(r=>r.pass).length,total:rows.length,rtoTargetSeconds:s.datacenter_ha.recovery_seconds_target,rpoTargetSeconds:s.datacenter_ha.rpo_seconds_target,rtoMeasuredSeconds:null,rpoMeasuredSeconds:null,sessionsPreserved:false,hardwareVerified:false};
 }
-return Object.freeze({MW,makeState,endpoints,inspect,access,choosePath,overlayPath,recoveryAudit});
+// Synthetic ledger: demonstrates replica selection and reconciliation, never bank transactions.
+function recoveryExercise(s,options={}){
+ if(!s.datacenter_ha?.enabled)throw Error('El ejercicio requiere HA en Casa Matriz.');
+ const scenario=options.scenario||'host';
+ const scenarios={host:['dc1'],stale:['dc1','storage:stale'],quorum:['dc1','backup'],fencing:['dc1','cluster:fencing'],corrupt:['dc1','storage:inconsistent'],application:['dc1','vm:application'],both:['dc1','dc2']};
+ if(!Object.hasOwn(scenarios,scenario))throw Error('Escenario de recuperación desconocido.');
+ const failureSecond=options.failureSecond??120;
+ if(!Number.isFinite(failureSecond)||failureSecond<0)throw Error('Instante de fallo inválido.');
+ const snapshots=options.snapshots??[{second:scenario==='stale'?0:90,status:'complete',integrity:scenario!=='corrupt',applicationConsistent:true},{second:110,status:'failed',integrity:true,applicationConsistent:true}];
+ if(!Array.isArray(snapshots)||snapshots.some(p=>!Number.isFinite(p.second)||p.second<0||!['complete','failed','running'].includes(p.status)||typeof p.integrity!=='boolean'||typeof p.applicationConsistent!=='boolean'))throw Error('Historial de réplicas inválido.');
+ const ledger=options.ledger??Array.from({length:12},(_,i)=>({id:'DEMO-'+String(i+1).padStart(3,'0'),second:i*10}));
+ if(!Array.isArray(ledger)||new Set(ledger.map(t=>t.id)).size!==ledger.length||ledger.some(t=>typeof t.id!=='string'||!t.id||!Number.isFinite(t.second)||t.second<0))throw Error('Registro didáctico inválido.');
+ const committed=ledger.filter(t=>t.second<=failureSecond).map(t=>({...t}));
+ const selected=snapshots.filter(p=>p.status==='complete'&&p.second<=failureSecond).sort((a,b)=>b.second-a.second)[0]||null;
+ const age=selected?failureSecond-selected.second:null,target=s.datacenter_ha.rpo_seconds_target;
+ const fresh=age!==null&&age<=target,consistent=Boolean(selected?.integrity&&selected?.applicationConsistent);
+ const state={...makeState(),faults:[...scenarios[scenario]]};
+ if(!fresh&&!state.faults.includes('storage:stale'))state.faults.push('storage:stale');
+ if(!consistent&&!state.faults.includes('storage:inconsistent'))state.faults.push('storage:inconsistent');
+ const z=inspect(s,state),bad=new Set(state.faults);
+ const checks=[
+  {id:'host',label:'Host alternativo y red disponibles',ok:z.dc.hosts.includes('dc2')&&z.gatewayAvailable},
+  {id:'quorum',label:'Mayoría de votos disponible',ok:z.dc.quorum},
+  {id:'fencing',label:'Aislamiento del host fallado confirmado',ok:!bad.has('cluster:fencing')},
+  {id:'replica',label:'Última réplica completada dentro del objetivo',ok:fresh},
+  {id:'integrity',label:'Copia íntegra y consistencia de aplicación comprobada',ok:consistent},
+  {id:'application',label:'Aplicación disponible en el host alternativo',ok:Boolean(z.dc.applicationHost)}
+ ];
+ const eligible=checks.every(c=>c.ok);
+ const inReplica=consistent?committed.filter(t=>t.second<=selected.second):[];
+ const reconcile=consistent?committed.filter(t=>t.second>selected.second):[];
+ return {scope:'EJERCICIO_DIDACTICO_DATOS_SINTETICOS',scenario,faults:[...state.faults],failureSecond,
+  selectedReplica:selected?{...selected}:null,replicaAgeSeconds:age,rpoTargetSeconds:target,rpoWithinTarget:fresh,
+  eligible,applicationHost:z.dc.activeApplicationHost,networkAvailable:z.gatewayAvailable&&Boolean(z.activeWan),votes:z.dc.votes,
+  checks,dataStateKnown:consistent,inReplica,reconcile,servedOperations:eligible?inReplica:[],operationCount:committed.length,
+  reconciliation:'Revisar identificadores y estado con el sistema de registro autorizado antes de reintentar; no duplicar operaciones.',
+  backupRestoreExecuted:false,rtoMeasuredSeconds:null,rpoMeasuredSeconds:null,sessionsPreserved:false,hardwareVerified:false};
+}
+return Object.freeze({MW,makeState,endpoints,inspect,access,choosePath,overlayPath,recoveryAudit,recoveryExercise});
 });

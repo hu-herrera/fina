@@ -30,3 +30,7 @@ Se comparan conexiones, routers, acceso Wi-Fi, permisos y recuperación de servi
 ## Continuidad de extremo a extremo
 
 Todas las sedes, incluida Casa Matriz, tienen Starlink, Leo, Entel y WOM en el modelo. E6 conserva camino por móvil. El ejemplo WAN muestra la pérdida sucesiva hasta el último acceso y solo pierde camino al agotar los cuatro. Las nuevas comunicaciones requieren un acceso utilizable en cada extremo, un túnel candidato coincidente, políticas y servicios disponibles. Los móviles centrales requieren una entrega alcanzable bajo los supuestos académicos; conservar camino no equivale a capacidad plena de toda la operación.
+
+## Recuperación central - 26 de octubre de 2026
+
+La escena 10 de Presentar añade operaciones ficticias para explicar el punto recuperable de la réplica, la conciliación y los controles previos a reabrir. El explorador QoS/VPN/HA permite revisar escenarios aislados. [Procedimiento de entrega técnica](https://github.com/hu-herrera/financiera-pacifico-entrega-docente/blob/main/Anexos/Operacion_Recuperacion_Datacenter_C5.md).

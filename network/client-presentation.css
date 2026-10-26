@@ -84,3 +84,15 @@ body.client-presenting #sm-overlay{z-index:5900}body.client-presenting #dev-over
 @media(max-height:800px) and (min-width:851px){.story-node-icon svg{width:19px;height:19px}}
 .story-qos .story-bar b{transform-origin:left;animation:story-grow 1s ease-out both}@keyframes story-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 #story-map-slot #chile-map{box-sizing:border-box;padding:10px}
+
+
+/* C5 recovery exercise: compact, synthetic operations, readable on mobile. */
+.story-recovery-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.story-recovery-stats>div{padding:12px;background:#0a1723;border:1px solid #385366;border-radius:9px}
+.story-recovery-stats span{display:block;font-size:11px;color:#b6c9d6}.story-recovery-stats strong{display:block;font-size:21px;margin-top:5px;color:#f0f7fa}
+.story-recovery-label{font-size:13px;line-height:1.5;color:#c1d3df;margin:12px 0}
+.story-ledger{display:grid;gap:7px}.story-ledger>div{display:grid;grid-template-columns:1fr .7fr 1.2fr;gap:8px;padding:10px 12px;border-radius:7px;font-size:13px;background:#0b1926;border-left:3px solid #6ddaba}
+.story-ledger>div.reconcile{border-color:#f8c179}.story-ledger strong{font-weight:600;color:#85e0c8}.story-ledger .reconcile strong{color:#f8c179}
+.story-recovery-checks{list-style:none;display:grid;gap:9px;margin:15px 0;padding:0}.story-recovery-checks li{padding:10px;background:#0b1926;border-radius:7px;font-size:14px}.story-recovery-checks span{display:inline-block;margin-right:10px;color:#85e0c8}
+.story-type-ha .story-journey{margin:16px 0}.story-type-ha .story-node{padding:13px 9px}
+@media(max-width:850px){.story-recovery-stats{gap:5px}.story-recovery-stats>div{padding:8px}.story-recovery-stats strong{font-size:17px}.story-recovery-stats span{font-size:10px}.story-ledger>div{font-size:11px;padding:9px 7px}.story-recovery-checks li{font-size:12px}.c5-assurance #c5-recovery-scenario{max-width:100%}}
