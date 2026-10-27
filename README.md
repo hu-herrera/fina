@@ -34,3 +34,7 @@ Todas las sedes, incluida Casa Matriz, tienen Starlink, Leo, Entel y WOM en el m
 ## Recuperación central - 26 de octubre de 2026
 
 La escena 10 de Presentar añade operaciones ficticias para explicar el punto recuperable de la réplica, la conciliación y los controles previos a reabrir. El explorador QoS/VPN/HA permite revisar escenarios aislados. [Procedimiento de entrega técnica](https://github.com/hu-herrera/financiera-pacifico-entrega-docente/blob/main/Anexos/Operacion_Recuperacion_Datacenter_C5.md).
+
+## Verificación pública del cierre
+
+La entrega docente publica [comandos, alcance y evidencia por corte](https://github.com/hu-herrera/financiera-pacifico-entrega-docente/blob/main/Anexos/Evidencia_Pruebas_27_oct_2026.md). Los conteos históricos no sustituyen los logs de una ejecución sobre este corte. E4 representa una sede completa caída; la escena 10 distingue el relevo del firewall de la recuperación de aplicación y datos.
