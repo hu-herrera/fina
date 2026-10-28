@@ -3,7 +3,7 @@
 'use strict';
 if(!root.C5App)return;
 const $=id=>document.getElementById(id),story=root.ClientStory;
-const state={active:false,index:0,generation:0,snapshot:null,lastReport:null,mapHome:null,example:null,raf:0,autoplay:true};
+const state={active:false,index:0,generation:0,snapshot:null,lastReport:null,mapHome:null,example:null,raf:0,autoplay:true,tour:null,tourRaf:0};
 const scene=()=>story.scenes[state.index];
 const route=()=>story.demoRoute;
 const esc=v=>escapeCLI(String(v));
@@ -42,9 +42,11 @@ function install(){
    close();return;
   }
   if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)||$('sm-overlay').classList.contains('vis')||$('dev-overlay').classList.contains('vis'))return;
+  if(e.code==='Space'&&state.tour&&['running','paused'].includes(state.tour.status)&&document.activeElement?.tagName!=='BUTTON'){e.preventDefault();e.stopImmediatePropagation();toggleTour();return;}
   if(['ArrowRight','ArrowLeft'].includes(e.key)){e.preventDefault();e.stopImmediatePropagation();if(e.key==='ArrowRight')go(state.index+1);else if(e.key==='ArrowLeft')go(state.index-1);}
  },true);
  const more=document.createElement('details');more.className='story-more';more.innerHTML='<summary>Explorar detalles</summary>';document.querySelector('.client-actions').append(more);for(const id of ['story-topology','story-policy','story-acl','story-assurance'])more.append($(id));
+ installTour();
  // Preserve integration hooks used by the site-modal close handler.
  root.PacketWorkbench=Object.freeze({openStage:start,closeStage:close,onSedeClosed(){},closeLab:closeSedeModal,get stage(){return state.index;}});
 }
@@ -74,8 +76,10 @@ function prepare(s){
  if(s.demo==='firewall')C5App.fault('cm','fwA');
  _refresh();
 }
-function go(index){
+function go(index,automatic=false){
  if(!state.active||index<0||index>=story.scenes.length)return;
+ if(state.tour?.status==='done')stopTour();
+ if(state.tour){if(!automatic)pauseTour();state.tour.elapsed=0;state.tour.phase='intro';state.tour.last=performance.now();}
  stopExample();state.index=index;state.lastReport=null;const generation=++state.generation,s=scene();prepare(s);
  document.querySelector('.client-copy').scrollTop=0;document.querySelector('.client-body').scrollTop=0;
  $('stage-kicker').textContent=(s.mode==='antes'?'ESCENARIO ACTUAL':'PROPUESTA')+' · '+(index+1)+' / '+story.scenes.length;
@@ -91,8 +95,9 @@ function go(index){
  $('story-result').textContent='';$('story-result').className='';
  renderExampleIntro();
  if(s.visual==='security')securityPanel();
- if(hasExample(s)&&state.autoplay)requestAnimationFrame(()=>{if(state.active&&state.generation===generation)startExample();});
+ if(hasExample(s)&&state.autoplay&&!state.tour)requestAnimationFrame(()=>{if(state.active&&!state.tour&&state.generation===generation)startExample();});
  if(s.visual==='topology')diagram();else if(s.visual==='budget')budget();else{zoomReset();requestAnimationFrame(()=>{if(state.active&&state.generation===generation){zoomReset();}});}
+ renderTour();
 }
 function diagram(){
  const s=SEDES.find(s=>s.id===route().source),template=document.createElement('template');template.innerHTML=renderTopoTab(s);
@@ -130,6 +135,7 @@ function budget(){
 }
 function close(){
  if(!state.active)return;
+ stopTour();
  stopExample();const snapshot=state.snapshot,map=$('map-container');state.active=false;
  clearPacketSimulation();PC_CONSOLE_RETURN=null;closeDevModal();closeSedeModal();closeDashboardPing();
  $('presentation-overlay').hidden=true;document.body.classList.remove('client-presenting');
@@ -167,7 +173,7 @@ function installExamples(){
  $('story-autoplay').onchange=e=>state.autoplay=e.target.checked;
  $('story-pause').onclick=pauseExample;$('story-step').onclick=nextExample;
  $('story-details').onclick=()=>{const v=document.querySelector('.client-visual');v.classList.toggle('show-technical');$('story-details').textContent=v.classList.contains('show-technical')?'Ocultar recorrido técnico':'Ver recorrido técnico';zoomReset();};
- document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.example?.status==='running')pauseExample();});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){if(state.tour)pauseTour();else if(state.example?.status==='running')pauseExample();}});
 }
 function renderExampleIntro(){
  document.querySelector('.story-more').open=false;document.querySelector('.story-more').hidden=['story-topology','story-policy','story-acl','story-assurance'].every(id=>$(id).hidden);const s=scene(),a=explanations[s.id];$('stage-title').textContent=a[0];$('stage-description').textContent=a[1];$('stage-facts').innerHTML=a.slice(2).map(p=>'<li>'+esc(p)+'</li>').join('');
@@ -193,8 +199,9 @@ function journey(labels,tone='neutral',bad=-1){
 function chapter(title,copy,tone='neutral'){$('story-event').textContent=title;$('story-event-copy').textContent=copy;$('story-lab').dataset.tone=tone;}
 function evidence(title,value,detail){$('story-evidence').innerHTML='<div class="story-proof"><span>'+esc(title)+'</span><strong>'+esc(value)+'</strong><small>'+esc(detail)+'</small></div>';}
 function stopExample(){if(state.raf)cancelAnimationFrame(state.raf);state.raf=0;state.example=null;document.querySelector('.client-visual')?.classList.remove('example-paused');}
-function pauseExample(){const e=state.example;if(!e||e.status==='done')return;e.status=e.status==='paused'?'running':'paused';e.last=performance.now();document.querySelector('.client-visual').classList.toggle('example-paused',e.status==='paused');$('story-pause').textContent=e.status==='paused'?'Continuar ejemplo':'Pausar ejemplo';if(PACKET_ANIMATION.frame&&!PACKET_ANIMATION.done&&PACKET_ANIMATION.paused!==(e.status==='paused'))pauseMapPing();}
-function nextExample(){const e=state.example;if(!e||e.status==='done')return;clearPacketSimulation();advanceExample();}
+function setExamplePaused(paused){const e=state.example;if(!e||e.status==='done')return;e.status=paused?'paused':'running';e.last=performance.now();document.querySelector('.client-visual').classList.toggle('example-paused',paused);$('story-pause').textContent=paused?'Continuar ejemplo':'Pausar ejemplo';if(PACKET_ANIMATION.frame&&!PACKET_ANIMATION.done&&PACKET_ANIMATION.paused!==paused)pauseMapPing();}
+function pauseExample(){if(state.tour&&state.tour.status!=='done'){toggleTour();return;}const e=state.example;if(e)setExamplePaused(e.status!=='paused');}
+function nextExample(){const e=state.example;if(!e||e.status==='done')return;if(state.tour)pauseTour();clearPacketSimulation();advanceExample();}
 function advanceExample(){const e=state.example;if(!e)return;e.step++;e.elapsed=0;e.last=performance.now();if(e.step>=e.steps.length){e.status='done';$('story-phase').textContent='Ejemplo terminado';$('story-pause').hidden=true;$('story-step').hidden=true;document.querySelector('.client-visual').classList.remove('example-paused');return;}
  const x=e.steps[e.step];$('story-phase').textContent=(e.step+1)+' / '+e.steps.length+' · '+x.label;
  $('story-timeline').innerHTML=e.steps.map((step,i)=>'<li '+(i===e.step?'aria-current="step"':'')+' class="'+(i<e.step?'finished':'')+'">'+esc(step.label)+'</li>').join('');
@@ -213,6 +220,7 @@ function networkStage(baseline){
 }
 function startExample(){
  if(!state.active||!hasExample(scene()))return;stopExample();cleanScene();const s=scene();
+ if(state.tour){state.tour.phase='example';state.tour.elapsed=0;}
  $('story-evidence').innerHTML='';$('story-takeaway').textContent='';$('story-replay').textContent='Repetir ejemplo';$('story-pause').hidden=false;$('story-pause').textContent='Pausar ejemplo';$('story-step').hidden=false;
  let steps;
  if(s.id==='security')steps=securitySteps();else if(s.id==='close')steps=qosSteps();else {
@@ -224,7 +232,8 @@ function startExample(){
  if(s.id==='before-ok')steps.splice(2,1);if(s.id==='firewall')steps.push(...haSteps());
  }
  state.example={status:'running',step:-1,steps,elapsed:0,last:performance.now(),results:[],generation:state.generation};advanceExample();
- function tick(now){const e=state.example;if(!e||!state.active||e.generation!==state.generation||e.status==='done')return;const modal=$('sm-overlay').classList.contains('vis')||$('dev-overlay').classList.contains('vis');if(e.status==='running'&&!document.hidden&&!modal){e.elapsed+=Math.max(0,now-e.last);const x=e.steps[e.step];if(e.elapsed>=x.duration&&(!x.waitPacket||!PACKET_ANIMATION.frame||PACKET_ANIMATION.done))advanceExample();}e.last=now;if(e.status!=='done')state.raf=requestAnimationFrame(tick);}
+ if(state.tour?.status==='paused')setExamplePaused(true);
+ function tick(now){const e=state.example;if(!e||!state.active||e.generation!==state.generation||e.status==='done')return;const modal=$('sm-overlay').classList.contains('vis')||$('dev-overlay').classList.contains('vis');if(e.status==='running'&&!document.hidden&&!modal){e.elapsed+=Math.max(0,now-e.last);const x=e.steps[e.step],duration=state.tour?Math.max(x.duration,13000)/tourRate():x.duration;if(e.elapsed>=duration&&(!x.waitPacket||!PACKET_ANIMATION.frame||PACKET_ANIMATION.done))advanceExample();}e.last=now;if(e.status!=='done')state.raf=requestAnimationFrame(tick);}
  state.raf=requestAnimationFrame(tick);
 }
 function carrierStage(cut){
@@ -284,5 +293,61 @@ function qosSteps(){
 }
 function evidenceQosResult(r){state.lastReport={scene:'close',ok:r.status==='SIMULADO',asExpected:r.congested&&Math.abs(r.shaperMbps-9)<1e-6,qos:r};$('story-result').textContent='Resultado calculado: '+r.shaperMbps+' Mbps disponibles. Congestión: '+(r.congested?'sí':'no')+'.';}
 
-root.ClientPresentation={install,start,close,go,authorize,get active(){return state.active;},get index(){return state.index;},get report(){return state.lastReport;},startExample,pauseExample,nextExample,get example(){return state.example?{status:state.example.status,step:state.example.step,total:state.example.steps.length,results:state.example.results}:null;}};
+// A narrated tour reuses the actual examples, including their packet-completion guard.
+// Its timers control presentation pacing, never recovery measurements or test results.
+function installTour(){
+ const bar=document.createElement('div');bar.className='story-tour';bar.setAttribute('aria-label','Recorrido automático');
+ bar.innerHTML='<button id="story-tour-start" type="button">Reproducir recorrido</button><button id="story-tour-pause" type="button" hidden>Pausar recorrido</button><button id="story-tour-repeat" type="button" hidden>Repetir escena</button><button id="story-tour-stop" type="button" hidden>Modo manual</button><label>Ritmo <select id="story-tour-rate" aria-label="Ritmo del recorrido"><option value="0.75">Pausado</option><option value="1" selected>Normal</option><option value="1.5">Ágil</option></select></label><span id="story-tour-status" role="status" aria-live="polite">12 escenas · tú pones la voz</span>';
+ document.querySelector('.client-footer').append(bar);
+ $('story-tour-start').onclick=startTour;$('story-tour-pause').onclick=toggleTour;$('story-tour-stop').onclick=stopTour;
+ $('story-tour-repeat').onclick=()=>go(state.index,true);
+ $('story-tour-rate').onchange=()=>{if(state.tour)state.tour.last=performance.now();};
+ // Inspecting equipment must not leave the narration running in the background.
+ for(const id of ['story-topology','story-policy','story-acl','story-assurance','story-details'])$(id).addEventListener('click',pauseTour);
+}
+function tourRate(){return Number($('story-tour-rate').value)||1;}
+function renderTour(){
+ if(!$('story-tour-start'))return;const t=state.tour,live=t&&t.status!=='done';
+ $('story-tour-start').hidden=Boolean(live);$('story-tour-start').textContent=t?.status==='done'?'Reiniciar recorrido':'Reproducir recorrido';
+ for(const id of ['story-tour-pause','story-tour-repeat','story-tour-stop'])$(id).hidden=!live;
+ $('story-tour-pause').textContent=t?.status==='paused'?'Continuar recorrido':'Pausar recorrido';
+ $('story-autoplay').disabled=Boolean(live);
+ $('story-tour-status').textContent=!t?'12 escenas · tú pones la voz':t.status==='done'?'Recorrido terminado · puedes cerrar tu explicación':(t.status==='paused'?'En pausa':'En reproducción')+' · escena '+(state.index+1)+' / '+story.scenes.length;
+}
+function pauseTour(){const t=state.tour;if(!t||t.status!=='running')return;t.status='paused';t.last=performance.now();setExamplePaused(true);renderTour();}
+function toggleTour(){
+ const t=state.tour;if(!t||t.status==='done')return;
+ if(t.status==='running'){pauseTour();return;}
+ if(document.hidden||$('sm-overlay').classList.contains('vis')||$('dev-overlay').classList.contains('vis'))return;
+ t.status='running';t.last=performance.now();setExamplePaused(false);renderTour();
+}
+function stopTour(){
+ if(state.tourRaf)cancelAnimationFrame(state.tourRaf);state.tourRaf=0;
+ if(state.tour)setExamplePaused(true);state.tour=null;renderTour();
+}
+function startTour(){
+ if(!state.active)return;stopTour();
+ const t={status:'running',phase:'intro',elapsed:0,last:performance.now()};state.tour=t;go(0,true);
+ function tick(now){
+  if(!state.active||state.tour!==t)return;state.tourRaf=0;
+  if(document.hidden||$('sm-overlay').classList.contains('vis')||$('dev-overlay').classList.contains('vis'))pauseTour();
+  if(t.status==='running'){
+   t.elapsed+=Math.max(0,now-t.last)*tourRate();
+   if(t.phase==='intro'){
+    if(hasExample(scene())){if(t.elapsed>=8000)startExample();}
+    else if(t.elapsed>=({context:35000,diagnosis:35000,proposal:50000,investment:50000}[scene().id]||35000))nextTourScene();
+   }else if(t.phase==='example'&&state.example?.status==='done'){t.phase='outro';t.elapsed=0;}
+   else if(t.phase==='outro'&&t.elapsed>=6000)nextTourScene();
+  }
+  t.last=now;if(t.status!=='done')state.tourRaf=requestAnimationFrame(tick);
+ }
+ state.tourRaf=requestAnimationFrame(tick);
+}
+function nextTourScene(){
+ if(state.index<story.scenes.length-1){go(state.index+1,true);return;}
+ state.tour.status='done';renderTour();
+}
+
+root.ClientPresentation={install,start,close,go,authorize,get active(){return state.active;},get index(){return state.index;},get report(){return state.lastReport;},startExample,pauseExample,nextExample,startTour,pauseTour,toggleTour,stopTour,get tour(){return state.tour?{status:state.tour.status,phase:state.tour.phase}:null;},get example(){return state.example?{status:state.example.status,step:state.example.step,total:state.example.steps.length,results:state.example.results}:null;}};
 })(window);
+

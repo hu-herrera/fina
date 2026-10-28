@@ -23,7 +23,9 @@ Los TXT y JSON incluyen esta política, las identidades IKE exactas y los objeti
 
 ## Presentación con ejemplos automáticos
 
-Abrir Presentar y avanzar con Siguiente diapositiva. Cada ejemplo recorre situación inicial, fallo, respuesta y conclusión. El inicio automático puede desactivarse para usar Empezar ejemplo. Pausar/Continuar detiene la secuencia y el paquete; Repetir restaura una escena limpia. Avanzar etapa es opcional. Explorar detalles reúne topología y herramientas técnicas.
+Abrir **Presentar**, elegir la alternativa y pulsar **Reproducir recorrido** para ejecutar las doce escenas de principio a fin mientras narras. El ritmo puede ser Pausado, Normal o Ágil. **Pausar recorrido** detiene también el paquete; **Repetir escena** reinicia la escena actual y **Modo manual** devuelve el control individual. Cambiar de pestaña o abrir herramientas técnicas pausa el recorrido. La escena final permanece visible. El simulador no graba audio ni video y no se sincroniza con la voz: ensayar antes de grabar.
+
+También se puede avanzar con Siguiente diapositiva. Cada ejemplo recorre situación inicial, fallo, respuesta y conclusión. El inicio automático puede desactivarse para usar Empezar ejemplo. Pausar/Continuar detiene la secuencia y el paquete; Repetir restaura una escena limpia. Avanzar etapa es opcional. Explorar detalles reúne topología y herramientas técnicas.
 
 Se comparan conexiones, routers, acceso Wi-Fi, permisos y recuperación de servicios. La escena final muestra reparto QoS por clases con valores didácticos. El ejemplo consulta el motor del modelo: no representa una transacción bancaria real. Salir restaura la red previa y cancela las acciones pendientes.
 
