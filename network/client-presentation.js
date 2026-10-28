@@ -21,7 +21,7 @@ function install(){
  $('story-replay').onclick=startExample;$('story-policy').onclick=authorize;
  const traceSlot=document.createElement('aside');traceSlot.id='story-trace-slot';traceSlot.hidden=true;document.querySelector('.client-visual').append(traceSlot);
  $('story-acl').onclick=()=>C5App.openSecurity(route().source);
- const assurance=document.createElement('button');assurance.id='story-assurance';assurance.type='button';assurance.textContent='QoS / VPN / HA';assurance.onclick=()=>{openSedeModal(route().source);smTab('assurance',document.querySelector('[data-c5-assurance]'));};document.querySelector('.client-actions').append(assurance);
+ const assurance=document.createElement('button');assurance.id='story-assurance';assurance.type='button';assurance.textContent='Protocolos / QoS / HA';assurance.onclick=()=>{openSedeModal(route().source);smTab('assurance',document.querySelector('[data-c5-assurance]'));};document.querySelector('.client-actions').append(assurance);
  $('story-topology').onclick=()=>openSedeModal(scene().id==='firewall'?'cm':route().source);
  $('story-variant').onchange=e=>{C5App.setVariant(e.target.value);go(state.index);};
  $('story-fullscreen').onclick=async()=>{try{if(document.fullscreenElement===stage)await document.exitFullscreen();else if(!document.fullscreenElement)await stage.requestFullscreen();}catch(e){$('story-result').textContent='El navegador no permitió pantalla completa. La presentación continúa en esta ventana.';}};
@@ -89,7 +89,7 @@ function go(index,automatic=false){
  $('story-future').hidden=s.id!=='close';$('story-future').textContent='Aperturas previstas: '+story.scope.future.join(', ')+'. No incluidas en las compras actuales.';
  $('stage-progress').textContent=(index+1)+' / '+story.scenes.length;$('stage-prev').disabled=index===0;$('stage-next').disabled=false;$('stage-next').textContent=index===story.scenes.length-1?'Finalizar presentación':'Siguiente diapositiva';
  $('story-replay').hidden=!hasExample(s);$('story-policy').hidden=s.id!=='security';$('story-policy').disabled=false;$('story-acl').hidden=s.id!=='security';
- $('story-topology').hidden=s.visual==='budget';$('story-assurance').hidden=!['proposal','security','close'].includes(s.id);
+ $('story-topology').hidden=['budget','summary'].includes(s.visual);$('story-assurance').hidden=!['proposal','security','close','finale'].includes(s.id);
  $('story-map-slot').hidden=s.visual!=='map';$('story-diagram').hidden=s.visual!=='topology';$('story-budget').hidden=s.visual!=='budget';$('story-security').hidden=s.visual!=='security';
  traceLayout(s.visual==='map'&&Boolean(s.demo));
  $('story-result').textContent='';$('story-result').className='';
@@ -163,7 +163,8 @@ const explanations={
  security:['Conectarse no concede acceso a todo','Una colaboradora necesita la aplicación financiera. Un invitado y un acceso directo a la base de datos requieren resultados distintos. Probaremos los tres casos.','La aplicación puede consultar la base de datos.','El computador del colaborador no recibe ese mismo permiso.'],
  firewall:['Firewall y recuperación del datacenter','Primero perderemos un firewall central. Después veremos cómo el modelo decide si puede recuperar la aplicación tras perder un servidor.','El firewall controla accesos; el servidor ejecuta los servicios.','La recuperación necesita datos utilizables y una decisión segura.'],
  investment:['Dos alternativas para el mismo problema','Comparamos la inversión inicial y el alcance de cinco años. La decisión considera equipos, licencias, soporte y capacidad de operación.','A combina Cisco y Palo Alto. B utiliza MikroTik y OPNsense.','Ambas superan los 160 millones de referencia.'],
- close:['En contingencia elegimos qué trabajo atender primero','Una copia grande puede competir con la atención financiera y la voz. El ejemplo muestra cómo se reparte un respaldo limitado.','QoS distribuye la capacidad disponible; no la aumenta.','Video: hasta 30 terminales remotos y 3 centrales en operación normal; se suspende en contingencia.']
+ close:['Crecimiento y operación en contingencia','Las nuevas sedes requieren dimensionar su demanda. Bajo contingencia, aplicación y voz conservan prioridad.','Seis aperturas en una fase posterior.','QoS distribuye la capacidad disponible; las copias y el video se limitan.'],
+ finale:['Para finalizar','La propuesta incorpora caminos alternativos, control de acceso y recuperación condicionada de los servicios centrales.','23 sedes y 650 puestos en el alcance actual.','Dos alternativas de inversión; seis aperturas previstas como una fase posterior.']
 };
 function hasExample(s){return Boolean(s.demo)||s.id==='close';}
 function installExamples(){
@@ -180,13 +181,25 @@ function renderExampleIntro(){
  document.querySelector('.client-visual').classList.toggle('has-example',hasExample(s));
  document.querySelector('.client-visual').classList.remove('show-technical');$('story-details').textContent='Ver recorrido técnico';
  $('story-replay').textContent='Empezar ejemplo';$('story-pause').hidden=true;$('story-step').hidden=true;$('story-details').hidden=s.visual!=='map'||!s.demo;
- $('story-lab').classList.remove('story-type-ha','story-type-qos');
+ $('story-lab').classList.remove('story-type-ha','story-type-qos','story-type-close');
  $('story-lab').innerHTML='<div class="story-lab-heading"><span class="story-live">CASO ACADÉMICO · '+(C5App.variant()==='B'?'ALTERNATIVA B':'ALTERNATIVA A')+'</span><span id="story-phase">'+(hasExample(s)?'Listo para empezar':'Qué cambia y por qué')+'</span></div><ol id="story-timeline" aria-label="Etapas del ejemplo"></ol><h2 id="story-event">Una solicitud necesita un camino completo</h2><p id="story-event-copy">Oficina, conexión y servicios centrales dependen unos de otros.</p><div id="story-journey" class="story-journey"></div><div id="story-evidence"></div><p id="story-takeaway"></p>';
  journey(['Puesto de trabajo','Red de la oficina','Conexión disponible','Servicios centrales']);
  if(s.id==='context')chapter('Una persona espera una respuesta','El recorrido inferior permite ubicar las 23 sedes del diseño. Las seis aperturas futuras se evalúan por separado.','neutral');
  if(s.id==='diagnosis')chapter('Tres funciones, tres dependencias','El switch conecta los puestos. El router da salida. El enlace comunica la oficina con central.','neutral');
  if(s.id==='proposal')chapter('La propuesta agrega alternativas con una función','El dibujo muestra conexiones propias para conservar otro camino cuando falla una pieza.','neutral');
  if(s.id==='investment')chapter('La inversión se compara con un horizonte común','Los totales incluyen el desembolso inicial una vez y separan conectividad y reserva operativa.','neutral');
+ if(s.id==='finale'){
+  $('story-lab').classList.add('story-type-close');$('story-map-slot').hidden=true;
+  $('story-phase').textContent='Conclusión · preguntas y demostración';
+  chapter('Continuidad con alternativas y control','La mejora propuesta cubre fallas de enlaces y equipos, mantiene permisos por servicio y condiciona la recuperación a una copia utilizable.','neutral');
+  $('story-journey').innerHTML='';
+  $('story-evidence').innerHTML='<div class="story-conclusions">'+[
+   ['Conectividad','Otra salida ante la pérdida de un proveedor o router.'],
+   ['Seguridad','Aplicación, voz, invitados y gestión con permisos propios.'],
+   ['Recuperación','Host alternativo, mayoría, aislamiento y réplica utilizable.']
+  ].map(([title,copy])=>'<div><strong>'+esc(title)+'</strong><p>'+esc(copy)+'</p></div>').join('')+'</div>';
+  $('story-takeaway').textContent='Gracias. Abrimos las preguntas y las pruebas sobre el simulador.';
+ }
 }
 function storyIcon(label){
  const path=/Puesto|Atención|Dispositivo|colaborador|invitado/i.test(label)?'<circle cx="12" cy="7" r="3"/><path d="M5 21v-3a7 7 0 0 1 14 0v3M8 21v-5m8 5v-5"/>':/DC-|Aplicación|Servicios|Base|Destino/i.test(label)?'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M8 6h1m-1 6h1m-1 6h1"/>':/Salida|Conexión|Acceso|Capacidad/i.test(label)?'<path d="M6 18h12a4 4 0 0 0 0-8 6 6 0 0 0-12-1 4.5 4.5 0 0 0 0 9Z"/><path d="m10 12-2 2 2 2m4-4 2 2-2 2"/>':'<rect x="3" y="14" width="6" height="6" rx="1"/><rect x="15" y="14" width="6" height="6" rx="1"/><rect x="9" y="3" width="6" height="5" rx="1"/><path d="M12 8v3H6v3m6-3h6v3"/>';
@@ -257,12 +270,12 @@ function recoveryChapter(scenario,title,copy,kind='summary'){
  journey(['DC-01: caído',scenario==='both'?'DC-02: caído':'DC-02: alternativo','Mayoría: '+r.votes+'/3',r.eligible?'Datos y aplicación':'Revisión necesaria'],r.eligible?'success':'blocked',r.eligible?-1:3);
  $('story-journey').classList.add('ha-nodes');
  if(kind==='data'){
-  $('story-evidence').innerHTML='<div class="story-recovery-stats"><div><span>Réplica completada</span><strong>t='+r.selectedReplica.second+' s</strong></div><div><span>Servidor falla</span><strong>t='+r.failureSecond+' s</strong></div><div><span>Ventana sin replicar</span><strong>'+r.replicaAgeSeconds+' s</strong></div></div><p class="story-recovery-label">12 operaciones ficticias · la tarea fallida de t=110 s no es una copia válida</p><div class="story-ledger">'+[...r.inReplica.slice(-2).map(t=>({...t,present:true})),...r.reconcile.map(t=>({...t,present:false}))].map(t=>'<div class="'+(t.present?'present':'reconcile')+'"><span>'+esc(t.id)+'</span><span>t='+t.second+' s</span><strong>'+(t.present?'En la réplica':'Por conciliar')+'</strong></div>').join('')+'</div><p class="story-recovery-label">'+r.inReplica.length+' operaciones presentes · '+r.reconcile.length+' requieren conciliación</p>';
+  $('story-evidence').innerHTML='<div class="story-recovery-stats"><div><span>Réplica completada</span><strong>t='+r.selectedReplica.second+' s</strong></div><div><span>Servidor falla</span><strong>t='+r.failureSecond+' s</strong></div><div><span>Ventana sin replicar</span><strong>'+r.replicaAgeSeconds+' s</strong></div></div><p class="story-recovery-label">'+r.operationCount+' operaciones generadas durante la ejecución · solo se usa una réplica completada</p><div class="story-ledger">'+[...r.inReplica.slice(-2).map(t=>({...t,present:true})),...r.reconcile.map(t=>({...t,present:false}))].map(t=>'<div class="'+(t.present?'present':'reconcile')+'"><span>'+esc(t.id)+'</span><span>t='+t.second+' s</span><strong>'+(t.present?'En la réplica':'Por conciliar')+'</strong></div>').join('')+'</div><p class="story-recovery-label">'+r.inReplica.length+' operaciones presentes · '+r.reconcile.length+' requieren conciliación</p>';
  }else if(kind==='checks'){
   $('story-evidence').innerHTML='<ol class="story-recovery-checks">'+r.checks.map(c=>'<li><span aria-hidden="true">'+(c.ok?'✓':'!')+'</span>'+esc(c.label)+'</li>').join('')+'</ol><p class="story-recovery-label">Redes comprueba el camino. Sistemas valida aplicación y datos. Operación autoriza la reapertura.</p>';
  }else evidence('Decisión del modelo',r.eligible?'Recuperación elegible':'Recuperación bloqueada',r.checks.filter(c=>!c.ok).map(c=>c.label).join(' · '));
  $('story-result').textContent='Aplicación HTTPS: '+(app.ok?'permitida y alcanzable en el modelo':'sin servicio en este escenario')+'.';
- $('story-takeaway').textContent=kind==='data'?'DEMO-011 y DEMO-012 no se reenvían a ciegas: revisar su estado para evitar duplicados.':kind==='checks'?'Nosotros entregamos preparación y procedimientos. La financiera administra y ejecuta la recuperación.':'Datos sintéticos. Objetivos: RTO 300 s y RPO 60 s; no son resultados medidos en servidores.';
+ $('story-takeaway').textContent=kind==='data'?r.reconcile.length+' operaciones requieren conciliación antes de reintentar; sus identificadores evitan duplicados.':kind==='checks'?'Nosotros entregamos preparación y procedimientos. La financiera administra y ejecuta la recuperación.':'Resultado de esta ejecución: recuperación '+(r.rtoSimulatedSeconds===null?'bloqueada':r.rtoSimulatedSeconds+' s')+'; RPO '+(r.rpoSimulatedSeconds===null?'no verificable':r.rpoSimulatedSeconds+' s')+' de tiempo virtual.';
  state.lastReport={scene:'firewall',ok:app.ok,expected:r.eligible,asExpected:app.ok===r.eligible,recovery:r};
 }
 function haSteps(){
@@ -273,19 +286,19 @@ function haSteps(){
   chapter(r.label,i===0?'La aplicación y la BD pueden reiniciarse en DC-02. Internet y la recuperación del servicio son comprobaciones distintas.':i===3?'Sin mayoría no se reinician servicios: evitamos decisiones contradictorias.':i===4?'Antes de reiniciar, debe confirmarse que el host fallado quedó aislado.':i===5?'Sin una réplica utilizable, el modelo bloquea el reinicio automático.':'Si perdemos ambos hosts no queda dónde ejecutar la aplicación. Una copia guardada no sustituye a un servidor disponible.',r.applicationHost?'success':'warning');
   journey(['DC-01: caído',r.faults.includes('dc2')?'DC-02: caído':'DC-02: superviviente','Mayoría: '+r.votes+' votos',r.applicationHost?'Aplicación en '+r.applicationHost.toUpperCase():'Aplicación detenida'],r.applicationHost?'success':'blocked',r.applicationHost?-1:3);$('story-journey').classList.add('ha-nodes');
   evidence('Dependencias de recuperación',r.applicationHost?'Aplicación elegible en '+r.applicationHost.toUpperCase():'Recuperación bloqueada',r.pass?'El modelo cumple la condición de este escenario.':'La comprobación no coincide con lo esperado.');
-  $('story-takeaway').textContent='Objetivos del diseño: RTO 300 s y RPO 60 s. No son tiempos medidos ni continuidad de sesiones.';
+  $('story-takeaway').textContent='Objetivos del diseño: RTO 300 s y RPO 60 s. El ejercicio calcula sus resultados sobre eventos del reloj virtual.';
  }});
  return [auditStep(0,0),
-  {label:'Qué datos vuelven',duration:12000,action(){recoveryChapter('host','¿Qué información conserva el servidor alternativo?','Volvemos a la caída de DC-01. La última réplica completada es de t=90 s; el fallo ocurre en t=120 s. Las operaciones posteriores todavía requieren conciliación.','data');}},
-  {label:'Antes de reabrir',duration:10000,action(){recoveryChapter('host','Recuperar exige comprobar el servicio','El camino responde, pero también verificamos mayoría, aislamiento, copia y aplicación. Los resultados de esta pantalla son supuestos comprobados por el modelo.','checks');}},
-  {label:'Réplica antigua',duration:8500,action(){recoveryChapter('stale','Una copia antigua no cumple el objetivo','La copia tiene 120 s de antigüedad y el objetivo es 60 s. Nuestro procedimiento exige revisión antes de continuar con esa pérdida potencial.');}},
+  {label:'Qué datos vuelven',duration:12000,action(){recoveryChapter('host','¿Qué información conserva el servidor alternativo?','La ejecución genera operaciones, inicia réplicas y registra su finalización antes de aplicar la caída de DC-01. Las operaciones posteriores a la copia requieren conciliación.','data');}},
+  {label:'Antes de reabrir',duration:10000,action(){recoveryChapter('host','Recuperar exige comprobar el servicio','El camino responde, pero también verificamos mayoría, aislamiento, copia y aplicación. Los resultados proceden de las comprobaciones y eventos de esta ejecución.','checks');}},
+  {label:'Réplica antigua',duration:8500,action(){recoveryChapter('stale','Una copia antigua no cumple el objetivo','Seleccionamos una copia anterior al objetivo de antigüedad. La recuperación se bloquea y exige revisar la pérdida potencial.');}},
   auditStep(3,1),auditStep(4,2),auditStep(5,3),
   {label:'Copia inconsistente',duration:8500,action(){recoveryChapter('corrupt','Una copia reciente también puede estar dañada','El modelo bloquea el reinicio. El administrador debe buscar una copia válida, restaurarla en aislamiento y comprobar aplicación y datos antes de reabrir.');}},
   auditStep(7,4)];
 }
 
 function qosSteps(){
- $('story-lab').classList.add('story-type-qos');$('story-map-slot').hidden=true;traceLayout(false);
+ $('story-lab').classList.add('story-type-qos');$('story-map-slot').hidden=true;$('story-diagram').hidden=true;traceLayout(false);
  const demand={VOICE:1.5,FINANCIAL:4,CONTROL:.5,BULK:5,DEFAULT:9},names={VOICE:'Voz',FINANCIAL:'Aplicación financiera',CONTROL:'Servicios básicos',BULK:'Copias',DEFAULT:'Tráfico general'};
  return [{label:'Demanda concurrente',duration:5000,action(){chapter('Varias tareas compiten por el mismo respaldo','Voz, aplicación, servicios, copias y tráfico general ofrecen 20 Mbps. La subida elegida para este ejemplo es 10 Mbps.');journey(['Atención al cliente','Voz y servicios','Copias y navegación','Capacidad compartida']);$('story-journey').classList.add('ha-nodes');$('story-journey').querySelectorAll('.story-node-caption').forEach(el=>el.textContent='Tarea concurrente');evidence('Supuesto de este ejemplo','20 Mbps solicitados / 10 Mbps de subida','Son valores didácticos, no una medición del proveedor.');}},
  {label:'Reparto por prioridad',duration:10000,action(){const site=C5App.site(route().source),r=C5Security.qosAllocation(site,'leo',demand,10);state.example.results.push({case:'qos',...r});chapter('La prioridad reserva capacidad para atender','Reservamos el 90 % de esa subida: 9 Mbps para repartir. La aplicación y voz reciben lo solicitado; las tareas grandes reciben menos y deben esperar.','success');$('story-evidence').innerHTML='<div class="story-qos">'+r.rows.map(row=>'<div><span>'+esc(names[row.id])+'</span><div class="story-bar"><i style="width:'+Math.min(100,row.offeredMbps/9*100)+'%"></i><b style="width:'+Math.min(100,row.allocatedMbps/9*100)+'%"></b></div><strong>'+row.allocatedMbps.toFixed(1)+' / '+row.offeredMbps+' Mbps</strong></div>').join('')+'</div><p class="story-chart-key">Barra tenue: demanda · barra sólida: capacidad asignada</p>';evidenceQosResult(r);}},
@@ -297,7 +310,7 @@ function evidenceQosResult(r){state.lastReport={scene:'close',ok:r.status==='SIM
 // Its timers control presentation pacing, never recovery measurements or test results.
 function installTour(){
  const bar=document.createElement('div');bar.className='story-tour';bar.setAttribute('aria-label','Recorrido automático');
- bar.innerHTML='<button id="story-tour-start" type="button">Reproducir recorrido</button><button id="story-tour-pause" type="button" hidden>Pausar recorrido</button><button id="story-tour-repeat" type="button" hidden>Repetir escena</button><button id="story-tour-stop" type="button" hidden>Modo manual</button><label>Ritmo <select id="story-tour-rate" aria-label="Ritmo del recorrido"><option value="0.75">Pausado</option><option value="1" selected>Normal</option><option value="1.5">Ágil</option></select></label><span id="story-tour-status" role="status" aria-live="polite">12 escenas · tú pones la voz</span>';
+ bar.innerHTML='<button id="story-tour-start" type="button">Reproducir recorrido</button><button id="story-tour-pause" type="button" hidden>Pausar recorrido</button><button id="story-tour-repeat" type="button" hidden>Repetir escena</button><button id="story-tour-stop" type="button" hidden>Modo manual</button><label>Ritmo <select id="story-tour-rate" aria-label="Ritmo del recorrido"><option value="0.75">Pausado</option><option value="1" selected>Normal</option><option value="1.5">Ágil</option></select></label><span id="story-tour-status" role="status" aria-live="polite">${story.scenes.length} escenas · tú pones la voz</span>';
  document.querySelector('.client-footer').append(bar);
  $('story-tour-start').onclick=startTour;$('story-tour-pause').onclick=toggleTour;$('story-tour-stop').onclick=stopTour;
  $('story-tour-repeat').onclick=()=>go(state.index,true);
@@ -312,7 +325,7 @@ function renderTour(){
  for(const id of ['story-tour-pause','story-tour-repeat','story-tour-stop'])$(id).hidden=!live;
  $('story-tour-pause').textContent=t?.status==='paused'?'Continuar recorrido':'Pausar recorrido';
  $('story-autoplay').disabled=Boolean(live);
- $('story-tour-status').textContent=!t?'12 escenas · tú pones la voz':t.status==='done'?'Recorrido terminado · puedes cerrar tu explicación':(t.status==='paused'?'En pausa':'En reproducción')+' · escena '+(state.index+1)+' / '+story.scenes.length;
+ $('story-tour-status').textContent=!t?story.scenes.length+' escenas · tú pones la voz':t.status==='done'?'Recorrido terminado · preguntas y demostración':(t.status==='paused'?'En pausa':'En reproducción')+' · escena '+(state.index+1)+' / '+story.scenes.length;
 }
 function pauseTour(){const t=state.tour;if(!t||t.status!=='running')return;t.status='paused';t.last=performance.now();setExamplePaused(true);renderTour();}
 function toggleTour(){
@@ -335,6 +348,7 @@ function startTour(){
    t.elapsed+=Math.max(0,now-t.last)*tourRate();
    if(t.phase==='intro'){
     if(hasExample(scene())){if(t.elapsed>=8000)startExample();}
+    else if(scene().id==='finale'){t.status='done';renderTour();}
     else if(t.elapsed>=({context:35000,diagnosis:35000,proposal:50000,investment:50000}[scene().id]||35000))nextTourScene();
    }else if(t.phase==='example'&&state.example?.status==='done'){t.phase='outro';t.elapsed=0;}
    else if(t.phase==='outro'&&t.elapsed>=6000)nextTourScene();
