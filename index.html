@@ -4608,10 +4608,11 @@ function handleTermCmd(ev,sedeId,pcIdx){
   };
   addLine(pc.id+'> '+cmd,'term-prompt');
   const lower=cmd.toLowerCase().replace(/\s+/g,' ');
+  if(window.C5App?.enabled()){const result=C5App.pcCommand(sedeId,pc,cmd);if(result!==null){addLine(result);return;}}
   if(['clear','cls'].includes(lower)){session.lines=[];out.replaceChildren();return;}
   if(['help','?'].includes(lower)){
     const localConsole=window.C5App?.enabled()?(s.id==='cm'?'console fwa|fwb|sw1|sw2':'console r1|r2|sw1|sw2'):'console router|sw1|sw2|fw';
-    addLine('ipconfig [/all] · hostname · ping <IP> · tracert <IP> · route print · arp -a\n'+localConsole+' (PC 001, cable de laboratorio)\nssh [-l usuario] [usuario@]<IP> (sujeto a conectividad y políticas)\nclear / cls · ↑ / ↓ historial\nSimulación de comandos; no ejecuta Windows, SSH ni IOS reales.');
+    addLine('ipconfig [/all|/release|/renew] · nslookup <nombre> · curl https://app.financiera.test · sip register · sip call · sim transaction <ID> · hostname · ping <IP> · tracert <IP> · route print · arp -a\n'+localConsole+' (PC 001, cable de laboratorio)\nssh [-l usuario] [usuario@]<IP> (sujeto a conectividad y políticas)\nclear / cls · ↑ / ↓ historial\nSimulación de comandos; no ejecuta Windows, SSH ni IOS reales.');
   }else if(lower==='hostname')addLine(pc.id);
   else if(lower==='ipconfig'||lower==='ipconfig /all'){
     const c5=window.C5App?.enabled(),a=c5?C5App.access(s.id,pc):null;
@@ -6922,13 +6923,15 @@ addLog('Click en sede/satélite/torre/proveedor → modal de configuración','ok
 <script src="./network/c4-data.js"></script>
 <script src="./network/c4-model.js"></script>
 <script src="./network/c4-app.js"></script>
-<script src="./network/c5-model.js?v=cierre-20261027-r2"></script>
-<script src="./network/c5-security.js?v=cierre-20261027-r2"></script>
-<script src="./network/c5-device-config.js?v=cierre-20261027-r2"></script>
-<script src="./network/c5-app.js?v=cierre-20261027-r2"></script>
-<link rel="stylesheet" href="./network/client-presentation.css?v=cierre-20261028">
-<script src="./network/client-story.js?v=cierre-20261028"></script>
-<script src="./network/client-presentation.js?v=cierre-20261028"></script>
+<script src="./network/c5-protocols.js?v=operacion-20261028-r1"></script>
+<script src="./network/c5-model.js?v=operacion-20261028-r1"></script>
+<script src="./network/c5-security.js?v=operacion-20261028-r1"></script>
+<script src="./network/c5-device-config.js?v=operacion-20261028-r1"></script>
+<script src="./network/c5-console.js?v=operacion-20261028-r1"></script>
+<script src="./network/c5-app.js?v=operacion-20261028-r1"></script>
+<link rel="stylesheet" href="./network/client-presentation.css?v=operacion-20261028-r1">
+<script src="./network/client-story.js?v=operacion-20261028-r1"></script>
+<script src="./network/client-presentation.js?v=operacion-20261028-r1"></script>
 <script src="./network/packet-workbench.js?v=cierre-20261027-r2"></script>
 </body>
 </html>
