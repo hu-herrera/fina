@@ -1884,6 +1884,7 @@ function animateSats(now=performance.now()){
     });
   });
   renderFlowLines();
+  if(typeof PACKET_ANIMATION!=='undefined')PACKET_ANIMATION.updateGeometry?.();
   requestAnimationFrame(animateSats);
 }
 
@@ -6218,17 +6219,18 @@ function getWanEndpoint(s, refresh = true){
           : `🛰 ${LK_NAME[linkType]} LEO`;
       })(),
       point: [currentIllumination.x, currentIllumination.y],
+      anchorId: (()=>{const m=SAT_META[linkType][currentIllumination.idx];return m?`sat-${m.trainId}-${m.index}`:null;})(),
     };
     const satellite = buscarSatelite(s, linkType);
     const selected = satellite.optimo || satellite.handover;
-    if(selected) return { type: linkType, label: `🛰 ${LK_NAME[linkType]} LEO`, point: [selected.x, selected.y] };
+    if(selected){const m=SAT_META[linkType][selected.idx];return {type:linkType,label:`🛰 ${LK_NAME[linkType]} LEO`,point:[selected.x,selected.y],anchorId:m?`sat-${m.trainId}-${m.index}`:null};}
   }
   if(linkType === 'g5' || linkType === 'g4'){
     const antenna = ANTENAS
       .filter(a => a.sedeId === s.id && a.tipo === linkType)
       .sort((a, b) => Math.hypot(a.x - sedePos(s)[0], a.y - sedePos(s)[1]) -
         Math.hypot(b.x - sedePos(s)[0], b.y - sedePos(s)[1]))[0];
-    if(antenna) return { type: linkType, label: `📡 ${LK_NAME[linkType]} — ${antenna.city}`, point: [antenna.x, antenna.y] };
+    if(antenna) return { type: linkType, label: `📡 ${LK_NAME[linkType]} — ${antenna.city}`, point: [antenna.x, antenna.y], antennaId:antenna.id };
   }
   return { type: linkType, label: LK_NAME[linkType] || 'Sin ruta', point: sedePos(s) };
 }
@@ -6630,6 +6632,15 @@ function renderMapPingPolicyActions(result){
   button.textContent=allowed?'Quitar excepción ICMP y repetir':'Permitir solo este par ICMP y repetir';
   button.onclick=()=>toggleMapPingDiagnostic(!allowed);actions.append(button);
 }
+function packetHopPoint(hop){
+  const satellite=hop.id.startsWith('sat:')?hop.id.split(':'):null;
+  const anchorId=hop.anchorId||(satellite?`sat-${satellite[2]}-${satellite[3]}`:null);
+  const matrix=anchorId?document.getElementById(anchorId)?.transform.baseVal.getItem(0)?.matrix:null;
+  if(matrix)return [matrix.e,matrix.f];
+  const antennaId=hop.antennaId||(hop.id.startsWith('ant:')?hop.id.slice(4):null);
+  const antenna=antennaId?ANTENAS.find(a=>a.id===antennaId):null;
+  return antenna?[antenna.x,antenna.y]:hop.point;
+}
 function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const layer=document.getElementById('packet-layer');if(!layer)return;
   const src=SEDES.find(s=>s.id===srcId),dest=SEDES.find(s=>s.id===destId);if(!src||!dest)return;
@@ -6674,8 +6685,17 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const segmentMs=650/playback,segments=(hops.length-1)*2;
   const matrix=document.getElementById('chile-map').getScreenCTM(),pixelsPerUnit=matrix?Math.hypot(matrix.a,matrix.b):1;
   const durations=hops.slice(1).map((h,i)=>{const distance=Math.hypot(h.point[0]-hops[i].point[0],h.point[1]-hops[i].point[1])*pixelsPerUnit;return window.ClientPresentation?.active?Math.max(distance>40?1200:360,Math.min(3500,distance*7)):segmentMs;});
-  const roundTrip=[...durations,...durations.slice().reverse()],ends=[];let totalMs=0;
+  const visualScale=window.ClientPresentation?.active?Math.min(1,20000/(2*durations.reduce((a,b)=>a+b,0))):1;
+  const paced=durations.map(d=>d*visualScale),roundTrip=[...paced,...paced.slice().reverse()],ends=[];let totalMs=0;
   for(const duration of roundTrip){totalMs+=duration;ends.push(totalMs);}
+  state.index=0;state.target=1;state.fraction=0;
+  state.updateGeometry=()=>{
+    const points=hops.map(packetHopPoint);
+    path.setAttribute('d',points.map((p,i)=>(i?'L':'M')+p.join(',')).join(' '));
+    markers.forEach((m,i)=>{m.setAttribute('cx',points[i][0]);m.setAttribute('cy',points[i][1]);});
+    const a=points[state.index],b=points[state.target];
+    dot.setAttribute('cx',a[0]+(b[0]-a[0])*state.fraction);dot.setAttribute('cy',a[1]+(b[1]-a[1])*state.fraction);
+  };
   function frame(now){
     if(PACKET_ANIMATION!==state)return;
     if(!state.paused)state.elapsed=Math.min(totalMs,state.elapsed+Math.max(0,now-state.lastTime));
@@ -6683,10 +6703,10 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
     const segment=state.elapsed>=totalMs?segments:ends.findIndex(end=>state.elapsed<end),back=segment>=hops.length-1;
     const index=Math.max(0,Math.min(hops.length-1,back?segments-segment:segment));
     const target=Math.max(0,Math.min(hops.length-1,index+(back?-1:1))),fraction=segment>=segments?0:(state.elapsed-(segment?ends[segment-1]:0))/roundTrip[segment];
-    const a=hops[index].point,b=hops[target].point;
+    state.index=index;state.target=target;state.fraction=fraction;state.updateGeometry();
     const matrix=document.getElementById('chile-map').getScreenCTM();
     const scale=matrix?1/Math.hypot(matrix.a,matrix.b):1;
-    dot.setAttribute('cx',a[0]+(b[0]-a[0])*fraction);dot.setAttribute('cy',a[1]+(b[1]-a[1])*fraction);
+
     dot.setAttribute('r',(window.ClientPresentation?.active?7:5)*scale);dot.setAttribute('fill',back?'#65c8ff':'#ffd166');
     if(window.ClientPresentation?.active){path.style.stroke=back?'#65c8ff':'#ffd166';path.style.opacity='.95';}
     endpointLabels.forEach(label=>{
@@ -6928,10 +6948,10 @@ addLog('Click en sede/satélite/torre/proveedor → modal de configuración','ok
 <script src="./network/c5-security.js?v=operacion-20261028-r1"></script>
 <script src="./network/c5-device-config.js?v=operacion-20261028-r1"></script>
 <script src="./network/c5-console.js?v=operacion-20261028-r1"></script>
-<script src="./network/c5-app.js?v=operacion-20261028-r1"></script>
-<link rel="stylesheet" href="./network/client-presentation.css?v=grabacion-20261029-r1">
-<script src="./network/client-story.js?v=automatico-20261029-r1"></script>
-<script src="./network/client-presentation.js?v=automatico-20261029-r1"></script>
+<script src="./network/c5-app.js?v=breve-20261029-r1"></script>
+<link rel="stylesheet" href="./network/client-presentation.css?v=breve-20261029-r1">
+<script src="./network/client-story.js?v=breve-20261029-r1"></script>
+<script src="./network/client-presentation.js?v=breve-20261029-r1"></script>
 <script src="./network/packet-workbench.js?v=cierre-20261027-r2"></script>
 </body>
 </html>

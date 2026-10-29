@@ -114,3 +114,7 @@ body.client-presenting #sm-overlay{z-index:5900}body.client-presenting #dev-over
 
 /* Al pausar, la barra conserva visible la asignación ya calculada. */
 .example-paused .story-bar b{animation:none}
+
+/* Recording view keeps the examples automatic and the audience focused on the result. */
+.client-stage.tour-playing .story-player,.client-stage.tour-playing .client-actions,.client-stage.tour-playing #story-timeline{display:none}
+.client-stage.tour-playing #story-phase{font-weight:600}

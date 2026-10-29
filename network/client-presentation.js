@@ -69,11 +69,6 @@ function prepare(s){
  C5App.resetPresentationScene();LegacyBaseline.restoreState([]);
  if(ST.mode!==s.mode)toggleMode();
  C5App.resetPresentationScene();ST.failback={};ST.enlaceActual={};ST.selId=route().source;
- if(s.demo==='before-cut')ST.mpls[route().source]='caido';
- if(s.demo==='wan')C5App.fault(route().source,'upstream:starlink');
- if(s.demo==='router')C5App.fault(route().source,'r1');
- if(s.demo==='switch')C5App.fault(route().source,'sw1');
- if(s.demo==='firewall')C5App.fault('cm','fwA');
  _refresh();
 }
 function go(index,automatic=false){
@@ -105,7 +100,7 @@ function diagram(){
  svg.setAttribute('preserveAspectRatio','xMidYMid meet');svg.removeAttribute('width');svg.removeAttribute('height');
  svg.querySelectorAll('[onclick],[onkeydown],[tabindex],[role="button"]').forEach(el=>{for(const attr of ['onclick','onkeydown','tabindex','role','style'])el.removeAttribute(attr);});
  $('story-diagram').replaceChildren(svg);
- const caption=document.createElement('p');caption.textContent=(ST.mode==='antes'?'ANTES · infraestructura existente común a ambas alternativas':C5App.variant()==='A'?'DESPUÉS · A · Cisco / Palo Alto':'DESPUÉS · B · MikroTik / OPNsense')+' · '+s.code+' '+s.city+'. «Ver topología» permite ampliar, arrastrar y explorar los equipos.';$('story-diagram').append(caption);
+ const caption=document.createElement('p');caption.textContent=(ST.mode==='antes'?'ANTES · infraestructura existente común a ambas alternativas':C5App.variant()==='A'?'DESPUÉS · A · Cisco / Palo Alto':'DESPUÉS · B · MikroTik / OPNsense')+' · '+s.code+' '+s.city+'.';$('story-diagram').append(caption);
 }
 function traceLayout(show){$('story-trace-slot').hidden=!show;document.querySelector('.client-visual').classList.toggle('has-trace',show);}
 function runDemo(authorized,baseline=false){
@@ -126,8 +121,8 @@ function runDemo(authorized,baseline=false){
 }
 function authorize(){if(!state.active||scene().id!=='security')return;$('story-security').hidden=true;$('story-map-slot').hidden=false;traceLayout(true);runDemo(true);$('story-policy').disabled=true;}
 function securityPanel(){
- const cases=['app','database','guest-internal','voice','user-mgmt','admin'].map(id=>C5App.securityTest(route().source,id));
- $('story-security').innerHTML='<p class="client-section">ACL definidas por el proyecto</p><table><thead><tr><th>Comunicación</th><th>Resultado</th></tr></thead><tbody>'+cases.map(r=>'<tr><td>'+esc(r.flow.label)+'<small>'+esc(r.flow.protocol.toUpperCase()+'/'+r.flow.port)+'</small></td><td class="'+(r.ok?'c5-policy-allow':'c5-policy-deny')+'">'+(r.policy.action==='deny'?'Bloqueado':r.ok?'Permitido':'Sin camino')+'</td></tr>').join('')+'</tbody></table><p>Cada prueba consulta la regla, las direcciones y el camino disponibles. «Explorar las ACL» permite revisar los detalles.</p>';
+ const cases=['app','database'].map(id=>C5App.securityTest(route().source,id));
+ $('story-security').innerHTML='<p class="client-section">ACL definidas por el proyecto</p><table><thead><tr><th>Comunicación</th><th>Resultado</th></tr></thead><tbody>'+cases.map(r=>'<tr><td>'+esc(r.flow.label)+'<small>'+esc(r.flow.protocol.toUpperCase()+'/'+r.flow.port)+'</small></td><td class="'+(r.ok?'c5-policy-allow':'c5-policy-deny')+'">'+(r.policy.action==='deny'?'Bloqueado':r.ok?'Permitido':'Sin camino')+'</td></tr>').join('')+'</tbody></table><p>La aplicación está permitida; el acceso directo a la base de datos queda restringido.</p>';
 }
 function budget(){
  const b=story.budget,full=n=>'$'+n.toLocaleString('es-CL'),short=n=>'$'+(n/1000000).toLocaleString('es-CL',{maximumFractionDigits:1})+' millones';
@@ -151,7 +146,7 @@ function close(){
  $('presentation-launch').focus();
 }
 
-function hasExample(s){return Boolean(s.demo)||s.id==='close';}
+function hasExample(s){return Boolean(s.demo);}
 function installExamples(){
  const lab=document.createElement('section');lab.id='story-lab';lab.setAttribute('aria-label','Historia del ejemplo');document.querySelector('.client-visual').prepend(lab);
  const controls=document.createElement('div');controls.className='story-player';controls.innerHTML='<label><input id="story-autoplay" type="checkbox"> Iniciar ejemplos al avanzar</label><button id="story-pause" type="button" hidden>Pausar ejemplo</button><button id="story-step" type="button" hidden>Avanzar etapa</button><button id="story-details" type="button">Ver recorrido técnico</button>';
@@ -167,20 +162,24 @@ function renderExampleIntro(){
  document.querySelector('.client-visual').classList.remove('show-technical');$('story-details').textContent='Ver recorrido técnico';
  $('story-replay').textContent='Empezar ejemplo';$('story-pause').hidden=true;$('story-step').hidden=true;$('story-details').hidden=s.visual!=='map'||!s.demo;
  $('story-lab').classList.remove('story-type-ha','story-type-qos','story-type-close');
- $('story-lab').innerHTML='<div class="story-lab-heading"><span class="story-live">CASO ACADÉMICO · '+(C5App.variant()==='B'?'ALTERNATIVA B':'ALTERNATIVA A')+'</span><span id="story-phase">'+(hasExample(s)?'Listo para empezar':'Qué cambia y por qué')+'</span></div><ol id="story-timeline" aria-label="Etapas del ejemplo"></ol><h2 id="story-event"></h2><p id="story-event-copy"></p><div id="story-journey" class="story-journey"></div><div id="story-evidence"></div><p id="story-takeaway"></p>';
+ $('story-lab').innerHTML='<div class="story-lab-heading"><span class="story-live">PRUEBA EN EL SIMULADOR · '+(C5App.variant()==='B'?'ALTERNATIVA B':'ALTERNATIVA A')+'</span><span id="story-phase">'+(hasExample(s)?'Listo para empezar':'Avance del proyecto')+'</span></div><ol id="story-timeline" aria-label="Etapas del ejemplo"></ol><h2 id="story-event"></h2><p id="story-event-copy"></p><div id="story-journey" class="story-journey"></div><div id="story-evidence"></div><p id="story-takeaway"></p>';
  chapter(s.intro.title,s.intro.copy,'neutral');
  $('story-journey').innerHTML='';
+ if(s.id==='close'){
+  $('story-map-slot').hidden=true;
+  $('story-evidence').innerHTML='<div class="story-conclusions"><div><strong>En contingencia</strong><p>Priorizar aplicación y voz. Suspender video y posponer cargas grandes.</p></div><div><strong>Antes de migrar</strong><p>Piloto en central y una sucursal; después, migración por grupos.</p></div><div><strong>Para crecer</strong><p>Recalcular la demanda de las seis aperturas futuras.</p></div></div>';
+ }
  if(s.id==='finale'){
   $('story-lab').classList.add('story-type-close');$('story-map-slot').hidden=true;
   $('story-phase').textContent='Conclusión · preguntas y demostración';
-  chapter('Continuidad con alternativas y control','La mejora propuesta cubre fallas de enlaces y equipos, mantiene permisos por servicio y condiciona la recuperación a una copia utilizable.','neutral');
+  chapter('Una propuesta lista para llevar a un piloto','El diseño, el simulador y el presupuesto permiten revisar la solución antes de implementarla.','neutral');
   $('story-journey').innerHTML='';
   $('story-evidence').innerHTML='<div class="story-conclusions">'+[
    ['Conectividad','Otra salida ante la pérdida de un proveedor o router.'],
    ['Seguridad','Aplicación, voz, invitados y gestión con permisos propios.'],
    ['Recuperación','Host alternativo, mayoría, aislamiento y réplica utilizable.']
   ].map(([title,copy])=>'<div><strong>'+esc(title)+'</strong><p>'+esc(copy)+'</p></div>').join('')+'</div>';
-  $('story-takeaway').textContent='Gracias. Abrimos las preguntas y las pruebas sobre el simulador.';
+  $('story-takeaway').textContent='Muchas gracias.';
  }
 }
 function storyIcon(label){
@@ -198,34 +197,35 @@ function setExamplePaused(paused){const e=state.example;if(!e||e.status==='done'
 function pauseExample(){if(state.tour&&state.tour.status!=='done'){toggleTour();return;}const e=state.example;if(e)setExamplePaused(e.status!=='paused');}
 function nextExample(){const e=state.example;if(!e||e.status==='done')return;if(state.tour)pauseTour();clearPacketSimulation();advanceExample();if(PACKET_ANIMATION.frame&&!PACKET_ANIMATION.done&&PACKET_ANIMATION.paused)pauseMapPing();}
 function advanceExample(){const e=state.example;if(!e)return;e.step++;e.elapsed=0;e.last=performance.now();if(e.step>=e.steps.length){e.status='done';$('story-phase').textContent='Ejemplo terminado';$('story-pause').hidden=true;$('story-step').hidden=true;document.querySelector('.client-visual').classList.remove('example-paused');return;}
- const x=e.steps[e.step];$('story-phase').textContent=(e.step+1)+' / '+e.steps.length+' · '+x.label;
+ const x=e.steps[e.step];$('story-phase').textContent=x.label;
  $('story-timeline').innerHTML=e.steps.map((step,i)=>'<li '+(i===e.step?'aria-current="step"':'')+' class="'+(i<e.step?'finished':'')+'">'+esc(step.label)+'</li>').join('');
  x.action();if(e.status==='paused'&&PACKET_ANIMATION.frame&&!PACKET_ANIMATION.done&&!PACKET_ANIMATION.paused)pauseMapPing();
 }
 function cleanScene(){prepare({...scene(),demo:null});}
 function networkStage(baseline){
- cleanScene();if(!baseline){const s=scene();if(s.demo==='before-cut')ST.mpls[route().source]='caido';else if(s.demo==='wan')C5App.fault(route().source,'upstream:starlink');else if(s.demo==='router')C5App.fault(route().source,'r1');else if(s.demo==='switch')C5App.fault(route().source,'sw1');else if(s.demo==='firewall')C5App.fault('cm','fwA');_refresh();}
+ cleanScene();if(!baseline){if(scene().demo==='before-cut')ST.mpls[route().source]='caido';else if(scene().demo==='wan')C5App.fault(route().source,'upstream:starlink');_refresh();}
  runDemo(false,baseline);const r=state.lastReport,s=scene();state.example.results.push(structuredClone(r));
  const active=r.route.filter(n=>['router','firewall','ap'].includes(n.kind)).map(n=>n.label).slice(0,4).join(' · ');
  const after=s.mode==='despues'?C5App.securityTest(route().source,'app'):null;
  journey(['Puesto de Arica',s.demo==='switch'&&!baseline?'Wi-Fi de emergencia':'Red de la oficina',r.ok?(r.wan==='leo'?'Salida Amazon Leo':s.mode==='antes'?'Acceso MPLS':'Salida disponible'):'Acceso MPLS caído','Casa Matriz'],r.ok?'flowing':'blocked',r.ok?-1:2);
  evidence('Diagnóstico de conectividad',r.ok?'Camino disponible':'Sin camino',active||'La solicitud no tiene una alternativa elegible.');
  if(after){const box=document.createElement('p');box.className='story-service-check';box.textContent='Aplicación HTTPS: '+(after.ok?'permitida y alcanzable en el modelo':after.reason);$('story-evidence').append(box);}
- chapter(baseline?'Primero: la conexión funciona':r.ok?'Una nueva comunicación encuentra otro camino':'Ahora: la oficina pierde su único acceso',baseline?'Observa la solicitud y la respuesta en el mapa. El ejemplo espera a que termine su recorrido.':r.ok?'El camino se calcula con el fallo aplicado. El cambio no concede permisos adicionales.':'Los equipos locales pueden seguir encendidos. La comunicación con central queda interrumpida.',r.ok?'success':'danger');
+ chapter(baseline?'La comunicación llega a destino':r.ok?'La comunicación utiliza el respaldo':'La oficina queda sin salida',baseline?'El paquete sale de Arica, pasa por central y recibe una respuesta.':r.ok?'La nueva solicitud evita el enlace interrumpido.':'El puesto sigue encendido, pero ya no puede comunicarse con central.',r.ok?'success':'danger');
 }
 function startExample(){
  if(!state.active||!hasExample(scene()))return;stopExample();cleanScene();const s=scene();
  if(state.tour){state.tour.phase='example';state.tour.elapsed=0;}
  $('story-evidence').innerHTML='';$('story-takeaway').textContent='';$('story-replay').textContent='Repetir ejemplo';$('story-pause').hidden=false;$('story-pause').textContent='Pausar ejemplo';$('story-step').hidden=false;
  let steps;
- if(s.id==='security')steps=securitySteps();else if(s.id==='close')steps=qosSteps();else {
- steps=[{label:'Situación',duration:3500,action(){chapter(s.intro.title,s.intro.copy);journey(['Puesto de Arica','Red de la oficina','Acceso a central','Destino']);}},
- {label:'Camino inicial',duration:2500,waitPacket:true,action(){networkStage(true);}},
- {label:s.demo==='before-ok'?'Solicitud y respuesta':'Fallo y respuesta',duration:4500,waitPacket:true,action(){networkStage(false);}},
- {label:'Qué aprendemos',duration:6000,action(){const r=state.lastReport;chapter(r.asExpected?'El resultado coincide con el escenario':'El resultado necesita revisión',s.mode==='antes'?'Una conexión única puede dejar a la sucursal esperando. Agregar otra salida debe acompañarse de equipos y políticas coherentes.':s.id==='switch'?'El puesto necesita un medio alternativo y un AP con sus dependencias disponibles.':s.id==='router'?'Otra conexión y otro router cubren fallos distintos. La nueva ruta evita R1 apagado.':s.id==='firewall'?'El firewall alternativo conserva el control de accesos. Ahora revisaremos también los servidores.':'Con uno, dos o tres proveedores caídos se conserva un camino mientras el resto de las dependencias esté disponible. Al perder los cuatro accesos, la comunicación central se interrumpe.',r.asExpected?'success':'danger');$('story-takeaway').textContent='El ping comprueba un camino del modelo. El acceso a la aplicación se evalúa por separado.';}}];
- if(s.id==='wan'){steps[2].action=()=>carrierStage(['starlink']);steps.splice(3,0,{label:'Satelitales caídos',duration:4500,waitPacket:true,action:()=>carrierStage(['starlink','leo'])},{label:'Último respaldo',duration:4500,waitPacket:true,action:()=>carrierStage(['starlink','leo','entel5g'])},{label:'Sin ningún acceso',duration:5000,action:()=>carrierStage(['starlink','leo','entel5g','wom4g'])});}
- if(s.id==='before-ok')steps.splice(2,1);if(s.id==='firewall')steps.push(...haSteps());
- }
+ if(s.id==='security')steps=securitySteps().slice(0,2);
+ else if(s.id==='firewall')steps=[
+  {label:'Datos recuperados',duration:38000,action(){recoveryChapter('host','El servidor alternativo conserva la última copia','De las 15 operaciones generadas, 12 están en la réplica y 3 requieren conciliación.','data');}},
+  {label:'Comprobaciones de recuperación',duration:33000,action(){recoveryChapter('host','Revisar antes de volver a atender','El reinicio exige mayoría, aislamiento, recursos, una copia válida y respuesta de la aplicación.','checks');}}
+ ];
+ else steps=[
+  {label:s.id==='wan'?'Conexión principal':'Conexión disponible',duration:26000,waitPacket:true,action(){networkStage(true);}},
+  {label:s.id==='wan'?'Salida por Leo':'Enlace interrumpido',duration:30000,waitPacket:true,action(){if(s.id==='wan')carrierStage(['starlink']);else networkStage(false);}}
+ ];
  state.example={status:'running',step:-1,steps,elapsed:0,last:performance.now(),results:[],generation:state.generation};advanceExample();
  if(state.tour?.status==='paused')setExamplePaused(true);
  function tick(now){const e=state.example;if(!e||!state.active||e.generation!==state.generation||e.status==='done')return;const modal=$('sm-overlay').classList.contains('vis')||$('dev-overlay').classList.contains('vis');if(e.status==='running'&&!document.hidden&&!modal){e.elapsed+=Math.max(0,now-e.last);const x=e.steps[e.step],duration=state.tour?1000*(scene().tourTiming.steps[x.label]??Math.max(x.duration/1000,13))/tourRate():x.duration;if(e.elapsed>=duration&&(!x.waitPacket||!PACKET_ANIMATION.frame||PACKET_ANIMATION.done))advanceExample();}e.last=now;if(e.status!=='done')state.raf=requestAnimationFrame(tick);}
@@ -241,7 +241,7 @@ function carrierStage(cut){
 }
 function securitySteps(){
  const list=[['app','La colaboradora abre la aplicación','APP por HTTPS es el acceso necesario para atender al cliente.'],['database','El puesto intenta entrar directamente a la base','La aplicación tiene un permiso distinto del computador del colaborador.'],['guest-internal','Un invitado intenta acceder a la intranet','La red de invitados conserva Internet y separa los recursos internos.']];
- return list.map(([id,title,copy])=>({label:id==='app'?'Trabajo autorizado':id==='database'?'Acceso restringido':'Invitado aislado',duration:6500,action(){cleanScene();const r=C5App.securityTest(route().source,id);state.example.results.push({case:id,ok:r.ok,action:r.policy.action,reachable:r.reachable});securityPanel();$('story-security').querySelectorAll('tbody tr').forEach(tr=>tr.classList.toggle('story-row-current',tr.textContent.includes(r.flow.label)));chapter(title,copy,r.ok?'success':'danger');journey([id==='guest-internal'?'Dispositivo invitado':'Puesto colaborador','Reglas de acceso',id==='database'?'Base de datos':'Aplicación central','Decisión del modelo'],r.ok?'flowing':'blocked',r.ok?-1:1);if(!r.ok&&r.policy.action==='deny')$('story-journey').querySelector('.node-failed .story-node-caption').textContent='Acceso denegado';evidence(r.flow.label,r.ok?'Permitido y alcanzable':r.policy.action==='deny'?'Bloqueado por política':'Sin camino',r.policy.id+' · '+r.flow.protocol.toUpperCase()+'/'+r.flow.port);$('story-result').textContent=r.reason;state.lastReport={scene:'security',ok:r.ok,expected:id==='app',asExpected:id==='app'?r.ok:r.policy.action==='deny',policy:r.policy};}}));
+ return list.map(([id,title,copy])=>({label:id==='app'?'Aplicación permitida':id==='database'?'Base de datos bloqueada':'Invitado aislado',duration:6500,action(){cleanScene();const r=C5App.securityTest(route().source,id);state.example.results.push({case:id,ok:r.ok,action:r.policy.action,reachable:r.reachable});securityPanel();$('story-security').querySelectorAll('tbody tr').forEach(tr=>tr.classList.toggle('story-row-current',tr.textContent.includes(r.flow.label)));chapter(title,copy,r.ok?'success':'danger');journey([id==='guest-internal'?'Dispositivo invitado':'Puesto colaborador','Reglas de acceso',id==='database'?'Base de datos':'Aplicación central','Decisión del modelo'],r.ok?'flowing':'blocked',r.ok?-1:1);if(!r.ok&&r.policy.action==='deny')$('story-journey').querySelector('.node-failed .story-node-caption').textContent='Acceso denegado';evidence(r.flow.label,r.ok?'Permitido y alcanzable':r.policy.action==='deny'?'Bloqueado por política':'Sin camino',r.policy.id+' · '+r.flow.protocol.toUpperCase()+'/'+r.flow.port);$('story-result').textContent=r.reason;state.lastReport={scene:'security',ok:r.ok,expected:id==='app',asExpected:id==='app'?r.ok:r.policy.action==='deny',policy:r.policy};}}));
 }
 function recoveryChapter(scenario,title,copy,kind='summary'){
  cleanScene();const r=C5App.recoveryExercise({scenario});C5App.state('cm').faults=[...r.faults];_refresh();
@@ -260,33 +260,6 @@ function recoveryChapter(scenario,title,copy,kind='summary'){
  $('story-takeaway').textContent=kind==='data'?r.reconcile.length+' operaciones requieren conciliación antes de reintentar; sus identificadores evitan duplicados.':kind==='checks'?'Nosotros entregamos preparación y procedimientos. La financiera administra y ejecuta la recuperación.':'Resultado de esta ejecución: recuperación '+(r.rtoSimulatedSeconds===null?'bloqueada':r.rtoSimulatedSeconds+' s')+'; RPO '+(r.rpoSimulatedSeconds===null?'no verificable':r.rpoSimulatedSeconds+' s')+' de tiempo virtual.';
  state.lastReport={scene:'firewall',ok:app.ok,expected:r.eligible,asExpected:app.ok===r.eligible,recovery:r};
 }
-function haSteps(){
- const auditStep=(i,k)=>({label:['Servidor alternativo','Sin mayoría','Aislamiento seguro','Datos disponibles','Límite del sitio'][k],duration:6500,action(){
-  cleanScene();const audit=C5App.recoveryAudit(),r=audit.rows[i];C5App.state('cm').faults=[...r.faults];_refresh();
-  $('story-map-slot').hidden=true;traceLayout(false);$('story-lab').classList.add('story-type-ha');$('story-result').textContent='';$('story-details').hidden=true;
-  state.example.results.push({case:'ha',...r});
-  chapter(r.label,i===0?'La aplicación y la BD pueden reiniciarse en DC-02. Internet y la recuperación del servicio son comprobaciones distintas.':i===3?'Sin mayoría no se reinician servicios: evitamos decisiones contradictorias.':i===4?'Antes de reiniciar, debe confirmarse que el host fallado quedó aislado.':i===5?'Sin una réplica utilizable, el modelo bloquea el reinicio automático.':'Si perdemos ambos hosts no queda dónde ejecutar la aplicación. Una copia guardada no sustituye a un servidor disponible.',r.applicationHost?'success':'warning');
-  journey(['DC-01: caído',r.faults.includes('dc2')?'DC-02: caído':'DC-02: superviviente','Mayoría: '+r.votes+' votos',r.applicationHost?'Aplicación en '+r.applicationHost.toUpperCase():'Aplicación detenida'],r.applicationHost?'success':'blocked',r.applicationHost?-1:3);$('story-journey').classList.add('ha-nodes');
-  evidence('Dependencias de recuperación',r.applicationHost?'Aplicación elegible en '+r.applicationHost.toUpperCase():'Recuperación bloqueada',r.pass?'El modelo cumple la condición de este escenario.':'La comprobación no coincide con lo esperado.');
-  $('story-takeaway').textContent='Objetivos del diseño: RTO 300 s y RPO 60 s. El ejercicio calcula sus resultados sobre eventos del reloj virtual.';
- }});
- return [auditStep(0,0),
-  {label:'Qué datos vuelven',duration:12000,action(){recoveryChapter('host','¿Qué información conserva el servidor alternativo?','La ejecución genera operaciones, inicia réplicas y registra su finalización antes de aplicar la caída de DC-01. Las operaciones posteriores a la copia requieren conciliación.','data');}},
-  {label:'Antes de reabrir',duration:10000,action(){recoveryChapter('host','Recuperar exige comprobar el servicio','El camino responde, pero también verificamos mayoría, aislamiento, copia y aplicación. Los resultados proceden de las comprobaciones y eventos de esta ejecución.','checks');}},
-  {label:'Réplica antigua',duration:8500,action(){recoveryChapter('stale','Una copia antigua no cumple el objetivo','Seleccionamos una copia anterior al objetivo de antigüedad. La recuperación se bloquea y exige revisar la pérdida potencial.');}},
-  {label:'Copia inconsistente',duration:8500,action(){recoveryChapter('corrupt','Una copia reciente también puede estar dañada','El modelo bloquea el reinicio. El administrador debe buscar una copia válida, restaurarla en aislamiento y comprobar aplicación y datos antes de reabrir.');}},
-  auditStep(7,4)];
-}
-
-function qosSteps(){
- $('story-lab').classList.add('story-type-qos');$('story-map-slot').hidden=true;$('story-diagram').hidden=true;traceLayout(false);
- const demand={VOICE:1.5,FINANCIAL:4,CONTROL:.5,BULK:5,DEFAULT:9},names={VOICE:'Voz',FINANCIAL:'Aplicación financiera',CONTROL:'Servicios básicos',BULK:'Copias',DEFAULT:'Tráfico general'};
- return [{label:'Demanda concurrente',duration:5000,action(){chapter('Varias tareas compiten por el mismo respaldo','Voz, aplicación, servicios, copias y tráfico general ofrecen 20 Mbps. La subida elegida para este ejemplo es 10 Mbps.');journey(['Atención al cliente','Voz y servicios','Copias y navegación','Capacidad compartida']);$('story-journey').classList.add('ha-nodes');$('story-journey').querySelectorAll('.story-node-caption').forEach(el=>el.textContent='Tarea concurrente');evidence('Supuesto de este ejemplo','20 Mbps solicitados / 10 Mbps de subida','Son valores didácticos, no una medición del proveedor.');}},
- {label:'Reparto por prioridad',duration:10000,action(){const site=C5App.site(route().source),r=C5Security.qosAllocation(site,'leo',demand,10);state.example.results.push({case:'qos',...r});chapter('La prioridad reserva capacidad para atender','Reservamos el 90 % de esa subida: 9 Mbps para repartir. La aplicación y voz reciben lo solicitado; las tareas grandes reciben menos y deben esperar.','success');$('story-evidence').innerHTML='<div class="story-qos">'+r.rows.map(row=>'<div><span>'+esc(names[row.id])+'</span><div class="story-bar"><i style="width:'+Math.min(100,row.offeredMbps/9*100)+'%"></i><b style="width:'+Math.min(100,row.allocatedMbps/9*100)+'%"></b></div><strong>'+row.allocatedMbps.toFixed(1)+' / '+row.offeredMbps+' Mbps</strong></div>').join('')+'</div><p class="story-chart-key">Barra tenue: demanda · barra sólida: capacidad asignada</p>';evidenceQosResult(r);}},
- {label:'Operación degradada',duration:7000,action(){chapter('El respaldo conserva prioridades y exige límites','En contingencia se suspende el video y se posponen copias. QoS reparte capacidad; no crea más ancho de banda.','warning');$('story-takeaway').textContent='En operación normal: hasta 30 terminales remotos y 3 centrales con video, respetando límites por sede. El diseño se recalcula antes de crecer.';}}];
-}
-function evidenceQosResult(r){state.lastReport={scene:'close',ok:r.status==='SIMULADO',asExpected:r.congested&&Math.abs(r.shaperMbps-9)<1e-6,qos:r};$('story-result').textContent='Resultado calculado: '+r.shaperMbps+' Mbps disponibles. Congestión: '+(r.congested?'sí':'no')+'.';}
-
 // A narrated tour reuses the actual examples, including their packet-completion guard.
 // Its timers control presentation pacing, never recovery measurements or test results.
 function installTour(){
@@ -302,6 +275,7 @@ function installTour(){
 function tourRate(){return Number($('story-tour-rate').value)||1;}
 function renderTour(){
  if(!$('story-tour-start'))return;const t=state.tour,live=t&&t.status!=='done';
+ $('presentation-overlay').classList.toggle('tour-playing',Boolean(live));
  $('story-tour-start').hidden=Boolean(live);$('story-tour-start').textContent=t?.status==='done'?'Reiniciar recorrido':'Reproducir recorrido';
  for(const id of ['story-tour-pause','story-tour-repeat','story-tour-stop'])$(id).hidden=!live;
  $('story-tour-pause').textContent=t?.status==='paused'?'Continuar recorrido':'Pausar recorrido';
