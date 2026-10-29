@@ -3,7 +3,7 @@
 'use strict';
 if(!root.C5App)return;
 const $=id=>document.getElementById(id),story=root.ClientStory;
-const state={active:false,index:0,generation:0,snapshot:null,lastReport:null,mapHome:null,example:null,raf:0,autoplay:true,tour:null,tourRaf:0};
+const state={active:false,index:0,generation:0,snapshot:null,lastReport:null,mapHome:null,example:null,raf:0,autoplay:false,tour:null,tourRaf:0};
 const scene=()=>story.scenes[state.index];
 const route=()=>story.demoRoute;
 const esc=v=>escapeCLI(String(v));
@@ -151,25 +151,10 @@ function close(){
  $('presentation-launch').focus();
 }
 
-const explanations={
- context:['Una atención depende de la conexión','Una ejecutiva necesita consultar el sistema central para atender a un cliente. Vamos a observar qué ocurre cuando el camino falla.','Seguiremos una solicitud desde la oficina hasta central.','Cada cambio debe reducir una dependencia concreta.'],
- 'before-ok':['La oficina puede trabajar mientras el camino está disponible','El computador de Arica se comunica con Punta Arenas a través de la red central. Este diagnóstico nos permite seguir la conexión.','Una sola salida alcanza para funcionar en este momento.','La prueba todavía no demuestra qué ocurriría ante una falla.'],
- 'before-cut':['Un corte deja a la oficina sin alternativa','La ejecutiva conserva su computador encendido, pero una atención que depende de central debe esperar. Cortaremos el único acceso de la sucursal.','El problema es la falta de otro camino.','La red local puede seguir disponible sin acceso a central.'],
- diagnosis:['Más Internet no resuelve todas las fallas','Un acceso, un router y un switch sostienen el camino de la sucursal. Si falla una pieza sin alternativa, puede interrumpir el trabajo.','El enlace transporta la comunicación.','El router elige por dónde enviarla; el switch conecta los puestos.'],
- proposal:['Cada equipo adicional cubre una dependencia','Dos routers conectan los puestos con dos grupos de accesos. Los firewalls de central controlan los permisos antes de llegar a los servicios.','Otra conexión cubre la pérdida de un transporte.','Otro router cubre la pérdida del equipo que lo utiliza.'],
- wan:['La oficina encuentra otra salida','El proveedor principal deja de llegar al destino, aunque su terminal siga conectado. Observaremos primero el camino normal y después el respaldo.','La nueva comunicación debe evitar el transporte averiado.','El respaldo conserva prioridades, con menor capacidad disponible.'],
- router:['La segunda salida también necesita otro router','Ahora la falla está dentro de nuestra red: apagaremos R1. R2 debe poder utilizar sus propios enlaces para dar salida al puesto.','Dos proveedores sobre un router único conservan una dependencia.','La prueba comprueba una nueva comunicación por R2.'],
- switch:['El puesto cambia de medio para seguir conectado','Apagaremos el switch del puesto. Su cable deja de servir; el PC puede usar el acceso Wi-Fi de emergencia del switch superviviente.','El AP conecta por radio; no repara el cable averiado.','El teléfono necesita su propia radio y alimentación.'],
- security:['Conectarse no concede acceso a todo','Una colaboradora necesita la aplicación financiera. Un invitado y un acceso directo a la base de datos requieren resultados distintos. Probaremos los tres casos.','La aplicación puede consultar la base de datos.','El computador del colaborador no recibe ese mismo permiso.'],
- firewall:['Firewall y recuperación del datacenter','Primero perderemos un firewall central. Después veremos cómo el modelo decide si puede recuperar la aplicación tras perder un servidor.','El firewall controla accesos; el servidor ejecuta los servicios.','La recuperación necesita datos utilizables y una decisión segura.'],
- investment:['Dos alternativas para el mismo problema','Comparamos la inversión inicial y el alcance de cinco años. La decisión considera equipos, licencias, soporte y capacidad de operación.','A combina Cisco y Palo Alto. B utiliza MikroTik y OPNsense.','Ambas superan los 160 millones de referencia.'],
- close:['Crecimiento y operación en contingencia','Las nuevas sedes requieren dimensionar su demanda. Bajo contingencia, aplicación y voz conservan prioridad.','Seis aperturas en una fase posterior.','QoS distribuye la capacidad disponible; las copias y el video se limitan.'],
- finale:['Para finalizar','La propuesta incorpora caminos alternativos, control de acceso y recuperación condicionada de los servicios centrales.','23 sedes y 650 puestos en el alcance actual.','Dos alternativas de inversión; seis aperturas previstas como una fase posterior.']
-};
 function hasExample(s){return Boolean(s.demo)||s.id==='close';}
 function installExamples(){
  const lab=document.createElement('section');lab.id='story-lab';lab.setAttribute('aria-label','Historia del ejemplo');document.querySelector('.client-visual').prepend(lab);
- const controls=document.createElement('div');controls.className='story-player';controls.innerHTML='<label><input id="story-autoplay" type="checkbox" checked> Iniciar ejemplos al avanzar</label><button id="story-pause" type="button" hidden>Pausar ejemplo</button><button id="story-step" type="button" hidden>Avanzar etapa</button><button id="story-details" type="button">Ver recorrido técnico</button>';
+ const controls=document.createElement('div');controls.className='story-player';controls.innerHTML='<label><input id="story-autoplay" type="checkbox"> Iniciar ejemplos al avanzar</label><button id="story-pause" type="button" hidden>Pausar ejemplo</button><button id="story-step" type="button" hidden>Avanzar etapa</button><button id="story-details" type="button">Ver recorrido técnico</button>';
  document.querySelector('.client-copy').append(controls);
  $('story-autoplay').onchange=e=>state.autoplay=e.target.checked;
  $('story-pause').onclick=pauseExample;$('story-step').onclick=nextExample;
@@ -177,17 +162,14 @@ function installExamples(){
  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(state.tour)pauseTour();else if(state.example?.status==='running')pauseExample();}});
 }
 function renderExampleIntro(){
- document.querySelector('.story-more').open=false;document.querySelector('.story-more').hidden=['story-topology','story-policy','story-acl','story-assurance'].every(id=>$(id).hidden);const s=scene(),a=explanations[s.id];$('stage-title').textContent=a[0];$('stage-description').textContent=a[1];$('stage-facts').innerHTML=a.slice(2).map(p=>'<li>'+esc(p)+'</li>').join('');
+ document.querySelector('.story-more').open=false;document.querySelector('.story-more').hidden=['story-topology','story-policy','story-acl','story-assurance'].every(id=>$(id).hidden);const s=scene();
  document.querySelector('.client-visual').classList.toggle('has-example',hasExample(s));
  document.querySelector('.client-visual').classList.remove('show-technical');$('story-details').textContent='Ver recorrido técnico';
  $('story-replay').textContent='Empezar ejemplo';$('story-pause').hidden=true;$('story-step').hidden=true;$('story-details').hidden=s.visual!=='map'||!s.demo;
  $('story-lab').classList.remove('story-type-ha','story-type-qos','story-type-close');
- $('story-lab').innerHTML='<div class="story-lab-heading"><span class="story-live">CASO ACADÉMICO · '+(C5App.variant()==='B'?'ALTERNATIVA B':'ALTERNATIVA A')+'</span><span id="story-phase">'+(hasExample(s)?'Listo para empezar':'Qué cambia y por qué')+'</span></div><ol id="story-timeline" aria-label="Etapas del ejemplo"></ol><h2 id="story-event">Una solicitud necesita un camino completo</h2><p id="story-event-copy">Oficina, conexión y servicios centrales dependen unos de otros.</p><div id="story-journey" class="story-journey"></div><div id="story-evidence"></div><p id="story-takeaway"></p>';
- journey(['Puesto de trabajo','Red de la oficina','Conexión disponible','Servicios centrales']);
- if(s.id==='context')chapter('Una persona espera una respuesta','El recorrido inferior permite ubicar las 23 sedes del diseño. Las seis aperturas futuras se evalúan por separado.','neutral');
- if(s.id==='diagnosis')chapter('Tres funciones, tres dependencias','El switch conecta los puestos. El router da salida. El enlace comunica la oficina con central.','neutral');
- if(s.id==='proposal')chapter('La propuesta agrega alternativas con una función','El dibujo muestra conexiones propias para conservar otro camino cuando falla una pieza.','neutral');
- if(s.id==='investment')chapter('La inversión se compara con un horizonte común','Los totales incluyen el desembolso inicial una vez y separan conectividad y reserva operativa.','neutral');
+ $('story-lab').innerHTML='<div class="story-lab-heading"><span class="story-live">CASO ACADÉMICO · '+(C5App.variant()==='B'?'ALTERNATIVA B':'ALTERNATIVA A')+'</span><span id="story-phase">'+(hasExample(s)?'Listo para empezar':'Qué cambia y por qué')+'</span></div><ol id="story-timeline" aria-label="Etapas del ejemplo"></ol><h2 id="story-event"></h2><p id="story-event-copy"></p><div id="story-journey" class="story-journey"></div><div id="story-evidence"></div><p id="story-takeaway"></p>';
+ chapter(s.intro.title,s.intro.copy,'neutral');
+ $('story-journey').innerHTML='';
  if(s.id==='finale'){
   $('story-lab').classList.add('story-type-close');$('story-map-slot').hidden=true;
   $('story-phase').textContent='Conclusión · preguntas y demostración';
@@ -237,7 +219,7 @@ function startExample(){
  $('story-evidence').innerHTML='';$('story-takeaway').textContent='';$('story-replay').textContent='Repetir ejemplo';$('story-pause').hidden=false;$('story-pause').textContent='Pausar ejemplo';$('story-step').hidden=false;
  let steps;
  if(s.id==='security')steps=securitySteps();else if(s.id==='close')steps=qosSteps();else {
- steps=[{label:'Situación',duration:3500,action(){chapter('Una oficina necesita comunicarse','Comparamos la misma solicitud antes y después del fallo. La animación representa el modelo, sin cronometrar recuperación real.');journey(['Puesto de Arica','Red de la oficina','Acceso a central','Destino']);}},
+ steps=[{label:'Situación',duration:3500,action(){chapter(s.intro.title,s.intro.copy);journey(['Puesto de Arica','Red de la oficina','Acceso a central','Destino']);}},
  {label:'Camino inicial',duration:2500,waitPacket:true,action(){networkStage(true);}},
  {label:s.demo==='before-ok'?'Solicitud y respuesta':'Fallo y respuesta',duration:4500,waitPacket:true,action(){networkStage(false);}},
  {label:'Qué aprendemos',duration:6000,action(){const r=state.lastReport;chapter(r.asExpected?'El resultado coincide con el escenario':'El resultado necesita revisión',s.mode==='antes'?'Una conexión única puede dejar a la sucursal esperando. Agregar otra salida debe acompañarse de equipos y políticas coherentes.':s.id==='switch'?'El puesto necesita un medio alternativo y un AP con sus dependencias disponibles.':s.id==='router'?'Otra conexión y otro router cubren fallos distintos. La nueva ruta evita R1 apagado.':s.id==='firewall'?'El firewall alternativo conserva el control de accesos. Ahora revisaremos también los servidores.':'Con uno, dos o tres proveedores caídos se conserva un camino mientras el resto de las dependencias esté disponible. Al perder los cuatro accesos, la comunicación central se interrumpe.',r.asExpected?'success':'danger');$('story-takeaway').textContent='El ping comprueba un camino del modelo. El acceso a la aplicación se evalúa por separado.';}}];
@@ -250,12 +232,12 @@ function startExample(){
  state.raf=requestAnimationFrame(tick);
 }
 function carrierStage(cut){
- cleanScene();for(const sede of SEDES)for(const wan of cut)ST.links[sede.id][C5Model.MW[wan]]='caido';_refresh();runDemo(false,true);
+ cleanScene();for(const wan of cut)ST.links[route().source][C5Model.MW[wan]]='caido';_refresh();runDemo(false,true);
  const r=state.lastReport,wanted=cut.length<4;r.expected=wanted;r.asExpected=r.ok===wanted&&(!wanted||r.wan===['starlink','leo','entel5g','wom4g'][cut.length]);state.example.results.push(structuredClone(r));
  const labels={starlink:'Starlink',leo:'Amazon Leo',entel5g:'Entel 5G',wom4g:'WOM 4G'};
  journey(['Puesto de Arica','Red de la oficina',r.wan?labels[r.wan]:'Sin accesos','Casa Matriz'],r.ok?'flowing':'blocked',r.ok?-1:2);
- chapter(r.ok?'Permanece un camino por '+labels[r.wan]:'Se agotaron los cuatro accesos',r.ok?'La misma pérdida de proveedores se aplica a central y sucursales. El modelo encuentra una nueva ruta.':'La continuidad por transportes termina cuando no queda ninguno. Una red local encendida no sustituye el acceso a central.',r.ok?'success':'danger');
- const app=C5App.securityTest(route().source,'app');evidence('Acceso a la aplicación central',app.ok?'Permitido y alcanzable':'Sin camino',r.ok?'Respaldo móvil: la capacidad disponible limita la concurrencia.':'Cuatro proveedores interrumpidos en ambos extremos.');
+ chapter(r.ok?'Permanece un camino por '+labels[r.wan]:'Se agotaron los cuatro accesos',r.ok?'La pérdida de transportes afecta solo a S06. Central conserva sus accesos y el modelo encuentra una nueva ruta.':'La continuidad por transportes termina cuando no queda ninguno. Una red local encendida no sustituye el acceso a central.',r.ok?'success':'danger');
+ const app=C5App.securityTest(route().source,'app');evidence('Acceso a la aplicación central',app.ok?'Permitido y alcanzable':'Sin camino',r.ok?(r.wan==='leo'?'Respaldo satelital: la capacidad disponible limita la concurrencia.':'Respaldo móvil: la capacidad disponible limita la concurrencia.'):'Cuatro transportes interrumpidos en S06; central conserva sus accesos.');
 }
 function securitySteps(){
  const list=[['app','La colaboradora abre la aplicación','APP por HTTPS es el acceso necesario para atender al cliente.'],['database','El puesto intenta entrar directamente a la base','La aplicación tiene un permiso distinto del computador del colaborador.'],['guest-internal','Un invitado intenta acceder a la intranet','La red de invitados conserva Internet y separa los recursos internos.']];
@@ -292,7 +274,6 @@ function haSteps(){
   {label:'Qué datos vuelven',duration:12000,action(){recoveryChapter('host','¿Qué información conserva el servidor alternativo?','La ejecución genera operaciones, inicia réplicas y registra su finalización antes de aplicar la caída de DC-01. Las operaciones posteriores a la copia requieren conciliación.','data');}},
   {label:'Antes de reabrir',duration:10000,action(){recoveryChapter('host','Recuperar exige comprobar el servicio','El camino responde, pero también verificamos mayoría, aislamiento, copia y aplicación. Los resultados proceden de las comprobaciones y eventos de esta ejecución.','checks');}},
   {label:'Réplica antigua',duration:8500,action(){recoveryChapter('stale','Una copia antigua no cumple el objetivo','Seleccionamos una copia anterior al objetivo de antigüedad. La recuperación se bloquea y exige revisar la pérdida potencial.');}},
-  auditStep(3,1),auditStep(4,2),auditStep(5,3),
   {label:'Copia inconsistente',duration:8500,action(){recoveryChapter('corrupt','Una copia reciente también puede estar dañada','El modelo bloquea el reinicio. El administrador debe buscar una copia válida, restaurarla en aislamiento y comprobar aplicación y datos antes de reabrir.');}},
   auditStep(7,4)];
 }

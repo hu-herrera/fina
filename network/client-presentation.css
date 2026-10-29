@@ -111,3 +111,6 @@ body.client-presenting #sm-overlay{z-index:5900}body.client-presenting #dev-over
 .story-conclusions strong{font-size:17px;color:#8ce6cf}
 .story-conclusions p{font-size:15px;line-height:1.5;color:#c1d3df;margin:6px 0 0}
 .story-type-close #story-takeaway{font-size:18px;line-height:1.6;color:#f0f7fa}
+
+/* Al pausar, la barra conserva visible la asignación ya calculada. */
+.example-paused .story-bar b{animation:none}
