@@ -118,3 +118,5 @@ body.client-presenting #sm-overlay{z-index:5900}body.client-presenting #dev-over
 /* Recording view keeps the examples automatic and the audience focused on the result. */
 .client-stage.tour-playing .story-player,.client-stage.tour-playing .client-actions,.client-stage.tour-playing #story-timeline{display:none}
 .client-stage.tour-playing #story-phase{font-weight:600}
+
+.client-stage #story-timeline,.client-stage #story-step{display:none}
