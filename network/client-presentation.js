@@ -128,7 +128,7 @@ function budget(){
  const b=story.budget,short=n=>'$'+(n/1000000).toLocaleString('es-CL',{maximumFractionDigits:1})+' millones';
  $('story-budget').innerHTML='<p class="client-section">Comparación A/B · CLP, IVA supuesto incluido</p><table><thead><tr><th>Concepto</th><th>A</th><th>B</th></tr></thead><tbody>'+[
  ['Routers de sucursal','Cisco','MikroTik'],['Firewall central','Palo Alto','OPNsense'],['Inversión inicial',short(b.A.initial),short(b.B.initial)],['WAN mensual',short(b.A.monthly),short(b.B.monthly)],['Total a cinco años',short(b.A.period),short(b.B.period)]
- ].map(row=>'<tr>'+row.map((v,i)=>i?'<td>'+esc(v)+'</td>':'<th>'+esc(v)+'</th>').join('')+'</tr>').join('')+'</tbody></table><p>El total incluye el inicial una vez, 60 meses WAN y reservas de operación.</p><p>Referencia presupuestaria: '+short(b.original)+'. El financiamiento o el alcance requieren revisión.</p>';
+ ].map(row=>'<tr>'+row.map((v,i)=>i?'<td>'+esc(v)+'</td>':'<th>'+esc(v)+'</th>').join('')+'</tr>').join('')+'</tbody></table><p>El total incluye el inicial una vez, 60 meses WAN y reservas de operación.</p><p>Referencia presupuestaria: '+short(b.original)+'. Ambas alternativas superan ese monto.</p>';
 }
 function close(){
  if(!state.active)return;
@@ -169,13 +169,13 @@ function renderExampleIntro(){
  $('story-journey').innerHTML='';
  if(s.id==='finale'){
   $('story-lab').classList.add('story-type-close');$('story-map-slot').hidden=true;
-  $('story-phase').textContent='Observaciones y próximos pasos';
-  chapter('Un avance para recibir observaciones','La propuesta permite revisar el alcance y ajustar las decisiones antes de llevarlas a un piloto.','neutral');
+  $('story-phase').textContent='Estado del avance';
+  chapter('Continuidad y control de acceso','La propuesta incorpora caminos alternativos y permisos por servicio.','neutral');
   $('story-journey').innerHTML='';
   $('story-evidence').innerHTML='<div class="story-conclusions">'+[
-   ['Desarrollado','Diseño, simulador, inventario y presupuesto.'],
-   ['Por revisar','Alcance, prioridades y alternativa de inversión.'],
-   ['Continuación','Ajustar la propuesta con las observaciones del profesor.']
+   ['Red propuesta','Respaldos y seguridad centralizada.'],
+   ['Prototipo','Pruebas de conectividad y permisos.'],
+   ['Documentación','Inventario y comparación de costos A/B.']
   ].map(([title,copy])=>'<div><strong>'+esc(title)+'</strong><p>'+esc(copy)+'</p></div>').join('')+'</div>';
   $('story-takeaway').textContent='Muchas gracias.';
  }
