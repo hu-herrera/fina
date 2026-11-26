@@ -20,7 +20,7 @@ window.ClientStory={
     ],
     "futureNetworkA": 179239981,
     // Seis sucursales estándar. Partidas comunes de future_six de A y precios unitarios brutos del presupuesto C5 B.
-    "futureNetworkB": Math.round((39859840 + 12 * (553350 + 646990 + 77048 + 37271)) * 1.15),
+    "futureNetworkB": Math.round((39859840 + 12 * (553350 + 646990 + 281459 + 37271)) * 1.15),
     "futureWanMonthly": 2602206
   },
   "budget": {
