@@ -47,7 +47,12 @@ function startClosingTraffic(){
    const j=Math.floor(Math.random()*(i+1));
    [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
  }
- shuffled.forEach((site,i)=>{C5App.state(site.id).preferredWan=carriers[i%carriers.length];});
+ shuffled.forEach((site,i)=>{
+   const available=carriers.filter(id=>id==='starlink'||id==='leo'||ANTENAS.some(a=>a.sedeId===site.id&&a.tipo===(id==='entel5g'?'g5':'g4')));
+   C5App.state(site.id).preferredWan=available[i%available.length];
+ });
+ // Keep the central access visible throughout the national closing view.
+ C5App.state('cm').preferredWan='entel5g';
  _refresh();renderFlowLines();
  let frame=0;
  const futureBeams=new Map();
@@ -73,15 +78,16 @@ function startClosingTraffic(){
  updateMapMarkerScale();updateFuture();
  const beam=id=>futureBeams.get(id)||$('flow-link-'+id);
  const branches=SEDES.filter(site=>site.id!=='cm').map(site=>site.id).concat(futureSites.map(site=>site.id));
- let remaining=[];
+ const visits=new Map(branches.map(id=>[id,0]));
  function assign(stream,start){
    active.delete(stream.site);
-   if(!remaining.length)remaining=branches.slice();
-   const choices=remaining.filter(id=>!active.has(id)&&beam(id));
+   const ready=branches.filter(id=>!active.has(id)&&beam(id)?.getAttribute('d'));
+   const lowest=Math.min(...ready.map(id=>visits.get(id)));
+   const choices=ready.filter(id=>visits.get(id)===lowest);
    const site=choices[Math.floor(Math.random()*choices.length)];
    stream.site=site;
    if(site){
-     remaining.splice(remaining.indexOf(site),1);
+     visits.set(site,visits.get(site)+1);
      active.add(site);
      stream.dot.dataset.site=site;
    }
@@ -93,7 +99,7 @@ function startClosingTraffic(){
    const backbone=document.createElementNS(ns,'path');
    backbone.setAttribute('fill','none');backbone.setAttribute('stroke','#80bed0');backbone.setAttribute('stroke-width','1.2');backbone.setAttribute('stroke-dasharray','4 4');backbone.setAttribute('vector-effect','non-scaling-stroke');
    layer.prepend(backbone);
-   const stream={dot,backbone};assign(stream,demoNow()-i*280);streams.push(stream);
+   const stream={dot,backbone};assign(stream,demoNow()-Math.random()*2300);streams.push(stream);
  }
  function draw(){
    if(pausedAt!==null){frame=requestAnimationFrame(draw);return;}
@@ -105,7 +111,7 @@ function startClosingTraffic(){
    const central=beam('cm');
    for(const stream of streams){
      stream.dot.setAttribute('r',radius);
-     if(now-stream.start>=stream.duration)assign(stream,now+Math.random()*200);
+     if(now-stream.start>=stream.duration)assign(stream,now+Math.random()*900);
      const branch=stream.site&&beam(stream.site),t=(now-stream.start)/stream.duration;
      stream.dot.style.display=t<0||!branch||!central?'none':'';
      stream.backbone.style.display=stream.dot.style.display;
