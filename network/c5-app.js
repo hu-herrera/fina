@@ -172,7 +172,22 @@ function cli(id,type,command){
   const n=normalizeDevice(id,type),z=status(id),s=state(id),p=site(id),cmd=command.trim().toLowerCase().replace(/\s+/g,' ');
  if(z.poweredNodes[n]===false||s.faults.includes('site')||s.faults.includes(n))return 'Sin respuesta: equipo apagado en el escenario.';
  if(['show access-lists','show ip access-lists','show security policy','show firewall rules'].includes(cmd))return policyText();
- if(['help','?'].includes(cmd))return 'show status · show interfaces · show ip route · show inventory\nshow access-lists · show security policy · show running-config · show startup-config\nsim link <número> down|up (un enlace de este equipo)\nsim port <número de PC> down|up (el switch del PC)\nsave / write memory · clear · exit';
+ const branchRouter=id!=='cm'&&['r1','r2'].includes(n);
+ if(branchRouter&&variant==='B'&&cmd==='/interface bonding print detail'){
+   const cfg=deviceConfig(id,n);
+   return cfg.bonds.map(b=>{
+     const active=b.ports.filter(port=>cfg.ports.some(p=>p.port===port&&p.up));
+     return b.name+'  mode=802.3ad  slaves='+b.ports.join(',')+'  running='+(active.length?'yes':'no')+'  active-ports='+(active.join(',')||'none');
+   }).join('\n');
+ }
+ if(branchRouter&&variant==='A'&&cmd==='show spanning-tree'){
+   return p.links.filter(l=>l.a===n&&l.protection).map(l=>{
+     const preferredUp=z.links.some(other=>other.a===n&&other.b===l.b&&other.protection==='STP_PRIMARY');
+     const forwarding=l.protection==='STP_PRIMARY'||!preferredUp;
+     return l.portA+'  VLAN '+l.allowed_vlans.join(',')+'  '+(!z.links.includes(l)?'DOWN':forwarding?'FWD':'ALT / DISCARDING')+'  '+l.b;
+   }).join('\n');
+ }
+ if(['help','?'].includes(cmd))return (branchRouter?(variant==='B'?'/interface bonding print detail':'show spanning-tree')+'\n':'')+'show status · show interfaces · show ip route · show inventory\nshow access-lists · show security policy · show running-config · show startup-config\nsim link <número> down|up (un enlace de este equipo)\nsim port <número de PC> down|up (el switch del PC)\nsave / write memory · clear · exit';
  if(cmd==='show status'||cmd==='show high-availability state')return deviceState(id,n);
  if(['show interfaces','show interface all','show interfaces status'].includes(cmd))return deviceConfig(id,n).ports.map(p=>'#'+p.index+' '+p.port+' ↔ '+p.peer+' / '+p.peerPort+' · '+p.role+' · '+(p.up?'UP':'DOWN')+' · '+p.speed+' Mbps'+(p.address?' · '+p.address:'')+(p.vlans.length?' · VLAN '+p.vlans.join(','):'')).join('\n');
  if(cmd==='show ip route'||cmd==='show routing route')return Object.values(p.addressing).map(a=>a.network+' · VLAN'+a.vlan).join('\n')+'\n'+(z.activeWan&&z.gatewayAvailable&&status('cm').activeWan&&status('cm').dc.servicesHost?'Default full-tunnel por '+z.activeEdge+' / '+names[z.activeWan]: 'Default retirado: sin camino completo a central y sus servicios.');

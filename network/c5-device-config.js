@@ -18,6 +18,7 @@ function build(s,n,variant,st,live,security){
   const first=l.a===n,other=first?l.b:l.a,p=first?l.portA:l.portB;
   let address=first?l.router_ip:l.stack_ip;
   if(l.role==='WAN_ACCESS'&&n.startsWith('fw')){const w=s.wan_services.find(w=>w.distributor===other);if(w)address=variant==='B'?w.carrier_handoff[n]+' · VIP '+w.carrier_handoff.vip:w.carrier_handoff.vip;}
+  if(l.role==='WAN_TRUNK'&&n.startsWith('fw'))address=s.wan_services.filter(w=>w.distributor===other).map(w=>'V'+w.vlan+' '+(variant==='B'?w.carrier_handoff[n]+' · VIP ':'')+w.carrier_handoff.vip).join(' / ');
   if(l.role==='WAN_TRUNK'&&!l.protection&&n.startsWith('r'))address=s.wan_services.filter(w=>w.distributor===other).map(w=>'V'+w.vlan+' '+w.carrier_handoff[n]).join(' · ');
   if(l.role==='LAN_AGGREGATE'&&n.startsWith('fw'))address=['servers','firewall_transit'].map(k=>'V'+s.addressing[k].vlan+' '+(variant==='B'?s.addressing[k].member_addresses?.[n]+' · VIP ':'')+(s.addressing[k].gateway||s.addressing[k].ha_firewall)).join(' / ');
   if(l.role==='MANAGEMENT_ACCESS')address='SVI130 · '+s.after.management_addresses?.[n];
