@@ -78,7 +78,7 @@ function topology(s){
      const standby=l.protection==='STP_BACKUP'&&cables.some(c=>c.protection==='STP_PRIMARY'&&z.links.includes(c));
      const x1=330+j*640+(cross?(j?-105:105):0)+dx,x2=330+i*640+(cross?(i?-80:80):0)+dx;
      const mid=251+j*23+k*9;
-     svg+='<path data-wan-cable="" d="M'+x1+' 240 V'+mid+' H'+x2+' V300" fill="none" stroke="'+(z.links.includes(l)?(j?'#79bfff':'#62e7bd'):'#ff897d')+'" vector-effect="non-scaling-stroke" stroke-width="1.6"'+(standby?' stroke-dasharray="4 3"':'')+'><title>'+esc((standby?'Reserva · ':'')+w+' '+l.portB+' ↔ '+e+' '+l.portA)+'</title></path>';});
+     svg+='<path data-wan-cable="" d="M'+x1+' 240 V'+mid+' H'+x2+' V300" fill="none" stroke="'+(z.links.includes(l)?(j?'#79bfff':'#62e7bd'):'#ff897d')+'" vector-effect="non-scaling-stroke" stroke-width="1.6"><title>'+esc((standby?'Reserva · ':'')+w+' '+l.portB+' ↔ '+e+' '+l.portA)+'</title></path>';});
   }
   svg+=box(110+i*640,300,440,modelName(id,e)+' · '+edgeLabel(id,e),z.poweredNodes[e]?(e===z.activeEdge?'ACTIVO':'disponible / alternativa'):'APAGADO',e,z.poweredNodes[e]);
   for(const member of [1,2]){
