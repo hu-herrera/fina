@@ -18,7 +18,7 @@ window.ClientStory={
       "Osorno",
       "Castro"
     ],
-    "futureNetworkA": 191034261,
+    "futureNetworkA": 179239981,
     // Seis sucursales estándar. Partidas comunes de future_six de A y precios unitarios brutos del presupuesto C5 B.
     "futureNetworkB": Math.round((39859840 + 12 * (553350 + 646990 + 77048 + 37271)) * 1.15),
     "futureWanMonthly": 2602206
@@ -32,15 +32,15 @@ window.ClientStory={
     "wan60": 660607380,
     "scopeMonths": 60,
     "A": {
-      "initial": 793126897,
+      "initial": 750859610,
       "monthly": 11010123,
-      "period": 1503734277,
+      "period": 1461466990,
       "operations60": 50000000
     },
     "B": {
-      "initial": 281194478,
+      "initial": 291623397,
       "monthly": 11010123,
-      "period": 966801858,
+      "period": 977230777,
       "operations60": 25000000
     }
   },
@@ -108,7 +108,7 @@ window.ClientStory={
       "message": "A y B contratan los mismos cuatro proveedores de internet. La diferencia de inversión está en los equipos, suscripciones y soporte.",
       "points": [
         "A incorpora Cisco y Palo Alto. B usa MikroTik y OPNsense.",
-        "El despliegue contempla 12 semanas y ambas alternativas incluyen $25 millones para logística. Ambas superan la referencia inicial de $160 millones. B requiere aproximadamente $121,2 millones adicionales frente a esa referencia."
+        "El despliegue contempla 12 semanas y ambas alternativas incluyen $25 millones para logística. Ambas superan la referencia inicial de $160 millones. B requiere aproximadamente $131,6 millones adicionales frente a esa referencia."
       ],
       "expected": "La tabla compara inversión inicial, WAN mensual y total a 60 meses.",
       "section": "La inversión"

@@ -112,6 +112,7 @@ function topology(s){
  }
  pcs.forEach((pc,i)=>{
   const x=70+(i%cols)*cellW,y=gridY+Math.floor(i/cols)*cellH,powered=access(s.id,pc.sw);
+  if(!cm)svg+='<path d="M370 331 H45 V'+(y-12)+' H'+(x+25)+'" fill="none" stroke="#738ba9" stroke-width="2"/>';
   svg+='<g data-legacy-pair="'+pc.idx+'">'+line(x+25,y-12,x+25,y,powered)+text(x+66,y-15,'SW'+pc.sw+' · Gi'+pc.sw+'/0/'+pc.port,10);
   svg+='<g class="legacy-phone" tabindex="0" role="button" aria-label="'+pc.phoneId+'" onclick="LegacyBaseline.endpoint(\''+s.id+'\','+(pc.idx-1)+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();LegacyBaseline.endpoint(\''+s.id+'\','+(pc.idx-1)+')}"><title>'+pc.phoneId+' · '+pc.phoneIp+' · VLAN 20</title><rect x="'+x+'" y="'+y+'" width="48" height="39" rx="5" fill="#263b51" stroke="'+(powered?'#e3ba6a':'#f0787e')+'"/>'+text(x+24,y+24,'TEL',11)+'</g>';
   svg+=line(x+48,y+20,x+75,y+20,powered)+'<g class="topo-pc" onclick="openPC(\''+s.id+'\','+(pc.idx-1)+')"><title>'+pc.id+' · '+pc.ip+' · por '+pc.phoneId+'</title><rect class="pc-body" x="'+(x+75)+'" y="'+y+'" width="49" height="38" rx="4" fill="#233348" stroke="#8fa5bd"/><rect class="pc-screen" x="'+(x+80)+'" y="'+(y+5)+'" width="39" height="24" fill="#122235"/>'+text(x+99,y+56,'PC '+pc.idx,11)+'</g>'+text(x+24,y+56,'TEL '+pc.idx,11)+text(x+63,y+75,'1 puerto · voz 20 / datos 10',10)+'</g>';

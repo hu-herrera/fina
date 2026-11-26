@@ -40,27 +40,37 @@ function startClosingTraffic(){
  const layer=document.createElementNS(ns,'g');
  layer.id='closing-traffic';layer.setAttribute('pointer-events','none');map.append(layer);
  const streams=[],active=new Set();
+ const carriers=['starlink','leo','entel5g','wom4g'];
+ const offices=SEDES.filter(s=>s.id!=='cm');
+ const shuffled=offices.slice();
+ for(let i=shuffled.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+ }
+ shuffled.forEach((site,i)=>{C5App.state(site.id).preferredWan=carriers[i%carriers.length];});
+ _refresh();renderFlowLines();
  let frame=0;
  const futureBeams=new Map();
  const futureSites=futureCoordinates.map(([lat,lon],i)=>{
    const id='future-'+i,[x,y]=sedePos({lat,lon});
    const path=document.createElementNS(ns,'path');
-   path.setAttribute('stroke','#c59aff');path.setAttribute('stroke-width','0.8');path.setAttribute('stroke-dasharray','3 4');path.setAttribute('vector-effect','non-scaling-stroke');path.setAttribute('opacity','.65');layer.append(path);
-   const marker=document.createElementNS(ns,'path');
-   marker.setAttribute('d','M0 -5 L5 0 L0 5 L-5 0 Z');marker.setAttribute('fill','#c59aff');
+   path.setAttribute('stroke',LK_COLOR.starlink);path.setAttribute('stroke-width','0.8');path.setAttribute('stroke-dasharray','3 4');path.setAttribute('vector-effect','non-scaling-stroke');path.setAttribute('opacity','.65');layer.append(path);
+   const marker=document.createElementNS(ns,'circle');
+   marker.setAttribute('cx',x);marker.setAttribute('cy',y);marker.setAttribute('r',4.5);
+   marker.setAttribute('fill','#3cc878');marker.setAttribute('stroke','rgba(255,255,255,0.55)');marker.setAttribute('stroke-width',0.9);
+   setScreenFixedMapMarker(marker,x,y);
    marker.setAttribute('aria-label',story.scope.future[i]);layer.append(marker);
    return {id,x,y,path,marker};
  });
- function updateFuture(scale){
+ function updateFuture(){
    const satellites=SAT_POS.starlink.filter(p=>satelliteInMap(...p));
-   for(const {id,x,y,path,marker} of futureSites){
-     marker.setAttribute('transform','translate('+x+' '+y+') scale('+1/scale+')');
+   for(const {id,x,y,path} of futureSites){
      const nearest=satellites.reduce((best,p)=>!best||Math.hypot(p[0]-x,p[1]-y)<Math.hypot(best[0]-x,best[1]-y)?p:best,null);
      if(nearest){path.setAttribute('d','M'+x+' '+y+' L'+nearest[0]+' '+nearest[1]);futureBeams.set(id,path);}
      else{path.removeAttribute('d');futureBeams.delete(id);}
    }
  }
- updateFuture(1);
+ updateMapMarkerScale();updateFuture();
  const beam=id=>futureBeams.get(id)||$('flow-link-'+id);
  const branches=SEDES.filter(site=>site.id!=='cm').map(site=>site.id).concat(futureSites.map(site=>site.id));
  let remaining=[];
@@ -80,14 +90,17 @@ function startClosingTraffic(){
  for(let i=0;i<10;i++){
    const dot=document.createElementNS(ns,'circle');
    dot.setAttribute('vector-effect','non-scaling-stroke');dot.setAttribute('stroke','#152531');dot.setAttribute('stroke-width','1');layer.append(dot);
-   const stream={dot};assign(stream,demoNow()-i*280);streams.push(stream);
+   const backbone=document.createElementNS(ns,'path');
+   backbone.setAttribute('fill','none');backbone.setAttribute('stroke','#80bed0');backbone.setAttribute('stroke-width','1.2');backbone.setAttribute('stroke-dasharray','4 4');backbone.setAttribute('vector-effect','non-scaling-stroke');
+   layer.prepend(backbone);
+   const stream={dot,backbone};assign(stream,demoNow()-i*280);streams.push(stream);
  }
  function draw(){
    if(pausedAt!==null){frame=requestAnimationFrame(draw);return;}
    const now=demoNow();
    const matrix=map.getScreenCTM();
    const scale=matrix?Math.hypot(matrix.a,matrix.b):1;
-   updateFuture(Math.max(scale,0.001));
+   updateFuture();
    const radius=4/Math.max(scale,0.001);
    const central=beam('cm');
    for(const stream of streams){
@@ -95,22 +108,24 @@ function startClosingTraffic(){
      if(now-stream.start>=stream.duration)assign(stream,now+Math.random()*200);
      const branch=stream.site&&beam(stream.site),t=(now-stream.start)/stream.duration;
      stream.dot.style.display=t<0||!branch||!central?'none':'';
+     stream.backbone.style.display=stream.dot.style.display;
      if(t<0||!branch||!central)continue;
      const returning=t>=0.5, progress=(returning?1-t:t)*2;
      const onBeam=(path,u)=>path.getPointAtLength(path.getTotalLength()*u);
+     const a=onBeam(branch,1),b=onBeam(central,1);
+     stream.backbone.setAttribute('d','M'+a.x+' '+a.y+' L'+b.x+' '+b.y);
+     const lengths=[branch.getTotalLength(),stream.backbone.getTotalLength(),central.getTotalLength()];
+     const distance=progress*(lengths[0]+lengths[1]+lengths[2]);
      let point;
-     if(progress<0.25)point=onBeam(branch,progress*4);
-     else if(progress>0.75)point=onBeam(central,(1-progress)*4);
-     else{
-       const a=onBeam(branch,1),b=onBeam(central,1),u=(progress-0.25)*2;
-       point={x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u};
-     }
+     if(distance<=lengths[0])point=branch.getPointAtLength(distance);
+     else if(distance<=lengths[0]+lengths[1])point=stream.backbone.getPointAtLength(distance-lengths[0]);
+     else point=central.getPointAtLength(Math.max(0,lengths[2]-(distance-lengths[0]-lengths[1])));
      stream.dot.setAttribute('cx',point.x);stream.dot.setAttribute('cy',point.y);
      stream.dot.setAttribute('fill',returning?'#6bffdc':'#ffcf68');
    }
    frame=requestAnimationFrame(draw);
  }
- $('story-result').textContent='Red proyectada · 22 sucursales actuales y 6 futuras (rombos violetas) · Amarillo: consultas a Santiago · Verde: respuestas a las sucursales';
+ $('story-result').textContent='Tráfico simulado · Starlink, Amazon Leo, Entel 5G y WOM 4G · Amarillo: ida · Verde: vuelta · Celeste punteado: tránsito entre accesos';
  frame=requestAnimationFrame(draw);
  stopClosingTraffic=()=>{cancelAnimationFrame(frame);layer.remove();stopClosingTraffic=()=>{};};
 }
@@ -135,7 +150,7 @@ function install(){
  const traceSlot=document.createElement('aside');traceSlot.id='story-trace-slot';traceSlot.hidden=true;document.querySelector('.client-visual').append(traceSlot);
  $('story-acl').onclick=()=>C5App.openSecurity(route().source);
  $('story-topology').onclick=()=>openSedeModal(scene().id==='firewall'?'cm':route().source);
- $('story-variant').onchange=e=>{C5App.setVariant(e.target.value);go(state.index);};
+ $('story-variant').onchange=e=>{C5App.setVariant(e.target.value);if(scene().visual==='topology'){clearTimeout(demoTimer);diagram(false);}else go(state.index);};
  $('story-fullscreen').onclick=async()=>{try{if(document.fullscreenElement===document.documentElement)await document.exitFullscreen();else if(!document.fullscreenElement)await document.documentElement.requestFullscreen();}catch(e){$('story-result').textContent='El navegador no permitió pantalla completa. La presentación continúa en esta ventana.';}};
  document.addEventListener('keydown',e=>{
   if(!state.active)return;
@@ -227,12 +242,19 @@ function go(index,keepCascade=false){
  if(s.visual==='security')securityPanel();
  if(s.visual==='short')closingFilm();else if(s.visual==='topology')diagram();else if(s.visual==='budget')budget();else if(s.visual==='summary')summaryPanel(s.id);else{zoomReset();requestAnimationFrame(()=>{if(state.active&&state.generation===generation){if(s.demo&&!['before-ok','before-cut','wan-cascade'].includes(s.id))runDemo(false);else if(s.id==='closing')startClosingTraffic();else if(s.demo==='wan-cascade'){if(state.cascadePlayed)runDemo(false);else scheduleDemo(runCascadeAction,3500);}else zoomReset();}});}
 }
-function diagram(){
- const s=SEDES.find(s=>s.id===route().source),template=document.createElement('template');template.innerHTML=renderTopoTab(s);
+function diagram(before=true){
+ const mode=before?'antes':'despues';
+ if(ST.mode!==mode)toggleMode();
+ const site=SEDES.find(s=>s.id===route().source),template=document.createElement('template');
+ template.innerHTML=before?LegacyBaseline.topology(site):renderTopoTab(site);
  const svg=template.content.querySelector('.topo-svg');
- svg.setAttribute('preserveAspectRatio','xMidYMid meet');svg.removeAttribute('width');svg.removeAttribute('height');
+ svg.removeAttribute('width');svg.removeAttribute('height');
  $('story-diagram').replaceChildren(svg);
- const caption=document.createElement('p');caption.textContent=(ST.mode==='antes'?'ANTES · infraestructura existente común a ambas alternativas':C5App.variant()==='A'?'DESPUÉS · A · Cisco / Palo Alto':'DESPUÉS · B · MikroTik / OPNsense')+' · '+s.code+' '+s.city+(C5App.variant()==='A'?' · StackWise une los dos switches Cisco para administrarlos como uno.':' · Los switches remotos son independientes. LACP agrupa enlaces físicos entre equipos.')+' OSPF intercambia rutas entre redes y permite recalcular el camino cuando cambia la conectividad.';$('story-diagram').append(caption);
+ const button=document.createElement('button');button.type='button';
+ button.textContent=before?'Ver propuesta '+C5App.variant():'Ver red anterior';
+ button.onclick=()=>{clearTimeout(demoTimer);diagram(!before);};
+ $('story-diagram').append(button);
+ if(before)scheduleDemo(()=>{if($('dev-overlay').classList.contains('vis')||$('sm-overlay').classList.contains('vis'))return;diagram(false);},14000);
 }
 function traceLayout(show){$('story-trace-slot').hidden=!show;document.querySelector('.client-visual').classList.toggle('has-trace',show);}
 function runDemo(authorized){

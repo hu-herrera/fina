@@ -57,3 +57,5 @@ body.client-presenting #sm-overlay{z-index:5900}body.client-presenting #dev-over
 
 .client-stage.demo-paused *{animation-play-state:paused!important}
 .client-stage.demo-paused #stage-pause{outline:2px solid #ffd166}
+
+#story-diagram>button{align-self:center;flex:none;margin-top:4px}

@@ -8,7 +8,7 @@ function inspect(s,state,external={}){
  const bad=new Set([...state.faults,...state.adminDown]),up=k=>!bad.has('site')&&!bad.has(k),edges=s.id==='cm'?['fwA','fwB']:['r1','r2'];
  const usable=(l,i)=>up(l.a)&&up(l.b)&&up(l.a+':'+l.portA)&&up(l.b+':'+l.portB)&&up('link:'+i);
  const links=s.links.filter(usable),members=[1,2].filter(n=>up('sw'+n));
- const fabric=members.length===2&&links.some(l=>l.role==='STACK'),partition=members.length===2&&!fabric;
+ const fabric=members.length===2&&links.some(l=>l.role==='STACK'||l.role==='LACP_MEMBER'),partition=members.length===2&&!fabric;
  // No split-brain or forwarding guarantee is invented after complete control/fabric isolation.
  const carp=s.after.firewall_ha_control==='CARP_SERVICE_INTERFACES';
  const sharedCarp=carp&&members.some(member=>edges.every(e=>links.some(l=>l.a===e&&l.b==='sw'+member&&l.role==='LAN_AGGREGATE')));
@@ -35,7 +35,7 @@ function inspect(s,state,external={}){
  const appHost=selectHost(state.preferredApplicationHost,'dc1'),serviceHost=selectHost(state.preferredServicesHost,'dc2');
  if(s.datacenter_ha?.enabled&&quorum&&appHost)state.preferredApplicationHost=appHost;if(s.datacenter_ha?.enabled&&quorum&&serviceHost)state.preferredServicesHost=serviceHost;
  const dc=s.datacenter_ha?.enabled?{hosts,backup:witness,quorum,votes,replication,activeApplicationHost:quorum&&up('vm:application')?appHost:null,activeServicesHost:quorum&&up('vm:services')?serviceHost:null,activeMonitoringHost:quorum&&hosts.length===2?hosts.find(h=>h!==appHost)||serviceHost:null,applicationHost:Boolean(quorum&&appHost&&up('vm:application')),servicesHost:Boolean(quorum&&serviceHost&&up('vm:services')),monitoringHost:quorum&&hosts.length===2&&Boolean(serviceHost),mode:hosts.length===2?'normal':'contingencia',recoveryTested:false}:{hosts,backup:up('backup'),applicationHost:up('dc1')&&up('sw1'),servicesHost:up('dc2')&&up('sw2'),recoveryTested:false};
- return {profile:'C5',siteAvailable:up('site'),switchLocalL2:{1:up('sw1'),2:up('sw2')},interMemberL2:fabric,stackPartitioned:partition,activeStackMembers:members,gatewayAvailable:localGateway,
+ return {profile:'C5',siteAvailable:up('site'),switchLocalL2:{1:up('sw1'),2:up('sw2')},interMemberL2:fabric,stackPartitioned:partition,activeStackMembers:members,gatewayAvailable:localGateway,gatewayMaster:s.after.switch_redundancy&&localGateway?'sw'+members[0]:null,
   activeEdge:edge,activeWan:wan,wanAvailable:s.wan_services.filter(w=>paths.some(p=>p.wan===w.id)).map(w=>w.id),paths,links,
   switchGateway:perSwitch,haControl:ha,haSyncAvailable,capacityCertified:false,sessionContinuityVerified:false,
   poweredNodes:Object.fromEntries([...edges,'sw1','sw2','wanA','wanB','dc1','dc2','backup'].map(n=>[n,up(n)])),

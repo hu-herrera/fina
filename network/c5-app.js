@@ -53,14 +53,14 @@ function reset(id){
 function save(id){if(demoSession){state(id).savedAdminDown=[...state(id).adminDown];return 'Guardado temporal de presentación; no modifica la configuración del navegador.';}try{localStorage.setItem(key(id),JSON.stringify({version:1,adminDown:state(id).adminDown}));state(id).savedAdminDown=[...state(id).adminDown];return 'Configuración guardada solo en este navegador y variante.';}catch(e){return 'No se pudo guardar; los cambios siguen solo en memoria.';}}
 function clearConfig(id){try{if(!demoSession)localStorage.removeItem(key(id));}catch(e){}state(id).adminDown=[];state(id).savedAdminDown=[];refresh();}
 function button(id,k,title){return `<button type="button" class="btn btn-n" data-c5-fault="${esc(k)}" onclick="C5App.fault('${id}','${k}')">${state(id).faults.includes(k)?'Restaurar':'Fallar'} ${esc(title)}</button>`;}
-function summary(id){const p=site(id),z=status(id);return `<div class="c5-summary"><strong>C5 · ${esc(label())} · ${id==='cm'?'dos firewalls A/P':'dos routers; seguridad centralizada'}</strong><p>${id==='cm'?'Firewall elegido':'Router elegido'}: ${z.activeEdge||'ninguno'} · WAN: ${names[z.activeWan]||'sin camino'} · ${variant==='B'&&id!=='cm'?'switches independientes RSTP':'stack de acceso'} ${z.stackPartitioned?'aislado':z.activeStackMembers.join('+')||'sin acceso'}</p><p class="ping-note">${p.workstations} PCs y ${p.phones} teléfonos · dos switches · ${p.wan_services.length} WAN. ${id==='cm'?'Dos hosts y un repositorio de respaldo existentes.':'Salida por central con las mismas reglas de seguridad en cada transporte.'}</p></div>`;}
+function summary(id){const p=site(id),z=status(id);return `<div class="c5-summary"><strong>C5 · ${esc(label())} · ${id==='cm'?'dos firewalls A/P':'dos routers; seguridad centralizada'}</strong><p>${id==='cm'?'Firewall elegido':'Router elegido'}: ${z.activeEdge||'ninguno'} · WAN: ${names[z.activeWan]||'sin camino'} · ${id!=='cm'?'switches independientes LACP / VRRP':'stack de acceso'} ${z.stackPartitioned?'aislado':z.activeStackMembers.join('+')||'sin acceso'}</p><p class="ping-note">${p.workstations} PCs y ${p.phones} teléfonos · dos switches · ${p.wan_services.length} WAN. ${id==='cm'?'Dos hosts y un repositorio de respaldo existentes.':'Salida por central con las mismas reglas de seguridad en cada transporte.'}</p></div>`;}
 function dcInfo(){const z=status('cm');return '<div class="c5-dc-info"><h3>Datacenter · alta disponibilidad de servicios</h3><p>Aplicación / BD: '+(z.dc.activeApplicationHost?.toUpperCase()||'sin host disponible')+' · telefonía / DNS / AAA: '+(z.dc.activeServicesHost?.toUpperCase()||'sin host disponible')+'.</p><p>Quórum: '+z.dc.votes+'/3 votos · '+(z.dc.quorum?'mayoría disponible':'servicios detenidos para evitar conflicto')+' · '+(z.dc.mode==='normal'?'dos hosts disponibles':'prioridad a servicios críticos; NMS pausado')+'. BKP-01 aporta el tercer voto y conserva los respaldos.</p><p>APP 10.70.200.10 · BD .11 · PBX .20 · DNS/NTP .30 · AAA .31 · NMS .40 · backup .50. VLAN50, gateway 10.70.200.1. NOC: 10.80.0.10 en VLAN130.</p><p>Cada host y BKP-01 tiene NIC1 → SW1 y NIC2 → SW2. Réplica ZFS cada 60 s y reinicio de VMs en el host superviviente; la recuperación no conserva la sesión abierta.</p></div>';}
 function topology(s){
  const p=site(s.id),z=status(s.id),hosts=pcs(s),id=s.id,cm=id==='cm',W=1300,rows=Math.ceil(Math.ceil(hosts.length/2)/4),H=790+rows*88+(cm?240:0);
  const text=(x,y,t,n=14)=>`<text x="${x}" y="${y}" text-anchor="middle" fill="#d5e2ef" font-size="${n}">${esc(t)}</text>`;
  const line=(x,y,a,b,on=true)=>`<line x1="${x}" y1="${y}" x2="${a}" y2="${b}" stroke="${on?'#35c987':'#f36570'}" stroke-width="2"${on?'':' stroke-dasharray="6 4"'}/>`;
  const box=(x,y,w,title,sub,node,on=true)=>`<g${node?` role="button" tabindex="0" onclick="C5App.open('${id}','${node}')" onkeydown="if(event.key==='Enter')C5App.open('${id}','${node}')" style="cursor:pointer"`:''}><rect x="${x}" y="${y}" width="${w}" height="70" rx="8" fill="#172235" stroke="${on?'#35c987':'#f36570'}" stroke-width="2"/>${text(x+w/2,y+25,title,15)}${text(x+w/2,y+50,sub,12)}</g>`;
- let svg=text(650,28,'C5 · '+s.code+' · '+label(),21);
+ let svg=text(650,28,s.city+' · '+label()+(cm?'':variant==='B'?' · 4 pares LACP':' · 4 pares de tránsitos OSPF'),21);
  p.wan_services.forEach((w,i)=>{
    const width=285,x=25+i*320,toX=w.distributor==='wanA'?330:970,up=z.wanAvailable.includes(w.id);
    const action="openProveedorModal('"+id+"','"+M.MW[w.id]+"')";
@@ -69,18 +69,36 @@ function topology(s){
    svg+=line(x+width/2,125,toX,170,up);
    svg+='<line x1="'+(x+width/2)+'" y1="125" x2="'+toX+'" y2="170" stroke="transparent" stroke-width="14" style="cursor:pointer" onclick="'+action+'"/>';
  });
- for(const [i,wan] of ['wanA','wanB'].entries())svg+=box(160+i*640,170,340,'WAN-'+(i?'B':'A')+' · '+'MikroTik '+modelName(id,wan),cm?(i?'Puerto físico · 1 GbE':'Puerto físico · 2,5 GbE'):(i?'Distribuidor · Leo + WOM':'Distribuidor · Starlink + Entel'),wan,z.poweredNodes[wan]);
+ for(const [i,wan] of ['wanA','wanB'].entries())svg+=box(160+i*640,170,340,'WAN-'+(i?'B':'A')+' · '+(variant==='A'?'Cisco ':'MikroTik ')+modelName(id,wan),cm?(i?'Puerto físico · 1 GbE':'Puerto físico · 2,5 GbE'):(i?'Distribuidor · Leo + WOM':'Distribuidor · Starlink + Entel'),wan,z.poweredNodes[wan]);
  const edges=cm?['fwA','fwB']:['r1','r2'];
  for(const [i,e]of edges.entries()){
-  for(const [j,w]of ['wanA','wanB'].entries())svg+=line(330+j*640,240,330+i*640,300,z.paths.some(a=>a.edge===e&&a.distributor===w));
+  for(const [j,w] of ['wanA','wanB'].entries()){
+   const cables=p.links.filter(l=>l.a===e&&l.b===w&&l.role.startsWith('WAN_'));
+   cables.forEach((l,k)=>{const dx=(k-(cables.length-1)/2)*18,cross=i!==j;
+     const standby=l.protection==='STP_BACKUP'&&cables.some(c=>c.protection==='STP_PRIMARY'&&z.links.includes(c));
+     const x1=330+j*640+(cross?(j?-105:105):0)+dx,x2=330+i*640+(cross?(i?-80:80):0)+dx;
+     const mid=251+j*23+k*9;
+     svg+='<path data-wan-cable="" d="M'+x1+' 240 V'+mid+' H'+x2+' V300" fill="none" stroke="'+(z.links.includes(l)?(j?'#79bfff':'#62e7bd'):'#ff897d')+'" vector-effect="non-scaling-stroke" stroke-width="1.6"'+(standby?' stroke-dasharray="4 3"':'')+'><title>'+esc((standby?'Reserva · ':'')+w+' '+l.portB+' ↔ '+e+' '+l.portA)+'</title></path>';});
+  }
   svg+=box(110+i*640,300,440,modelName(id,e)+' · '+edgeLabel(id,e),z.poweredNodes[e]?(e===z.activeEdge?'ACTIVO':'disponible / alternativa'):'APAGADO',e,z.poweredNodes[e]);
-  for(const member of [1,2])svg+=line(330+i*640,370,330+(member-1)*640,450,z.links.some(l=>l.a===e&&l.b==='sw'+member&&l.role.startsWith('LAN_'))&&!z.stackPartitioned);
+  for(const member of [1,2]){
+    const cables=p.links.filter(l=>l.a===e&&l.b==='sw'+member&&l.role.startsWith('LAN_'));
+    cables.forEach((l,k)=>{
+      const crossed=i!==member-1,offset=(k-(cables.length-1)/2)*16;
+      const x1=330+i*640+(crossed?(i?-140:140):0)+offset,x2=330+(member-1)*640+(crossed?(member===1?85:-85):0)+offset;
+      const y=390+(i?34:0)+offset;
+      const path=crossed?'M'+x1+' 370 V'+y+' H'+x2+' V450':'M'+x1+' 370 V450';
+      svg+='<path data-lan-cable="" d="'+path+'" fill="none" stroke="'+(z.links.includes(l)?(i?'#79bfff':'#62e7bd'):'#ff897d')+'" vector-effect="non-scaling-stroke" stroke-width="1.6"'+(z.links.includes(l)?'':' stroke-dasharray="4 3"')+'><title>'+esc(e+' '+l.portA+' ↔ '+l.b+' '+l.portB)+'</title></path>';
+    });
+  }
  }
- svg+='<rect x="290" y="390" width="720" height="28" rx="5" fill="#0b1420"/>'+text(650,410,cm?'HA de firewalls y agregados LAN separados':'Cuatro enlaces LAN L3 independientes · no EtherChannel entre routers',14);
- for(const n of [1,2])svg+=box(110+(n-1)*640,450,440,modelName(id,'sw'+n)+' · SW'+n,cm?'LAN + servidores · dos miembros':variant==='A'?'SVI/gateway en stack · VLAN segmentadas':'RSTP / gateway redundante','sw'+n,z.switchLocalL2[n]);
- svg+=line(550,485,750,485,z.interMemberL2)+text(650,550,variant==='B'&&!cm?'Interconexión RSTP · sin LACP multichasis':'Dos enlaces StackWise; no son LACP');
- const apCount=cm?4:2;for(let i=1;i<=apCount;i++){const member=cm?Math.ceil(i/2):i,x=cm?80+(i-1)*310:180+(i-1)*640;svg+=box(x,575,cm?280:300,'AP'+i+' · '+modelName(id,'ap'+i),'Contingencia · SW'+member+' / autenticación','ap'+i,z.switchLocalL2[member]&&z.links.some(l=>l.a==='ap'+i&&l.role==='AP_TRUNK'));}
- for(const pc of hosts){const group=hosts.filter(h=>h.sw===pc.sw),i=group.findIndex(h=>h.idx===pc.idx),x=30+(pc.sw-1)*650+(i%4)*154,y=680+Math.floor(i/4)*88,a=access(id,pc);svg+=`<g class="topo-pc c5-pair" role="button" tabindex="0" onclick="openPC('${id}',${pc.idx-1})" onkeydown="if(event.key==='Enter')openPC('${id}',${pc.idx-1})" style="cursor:pointer"><title>${esc(pc.id+' '+a.pcIp+' · '+pc.phoneId+' '+a.phoneIp+' · SW'+pc.sw+' puerto '+pc.port)}</title><rect x="${x}" y="${y}" width="146" height="72" rx="6" fill="#172235" stroke="${a.local?'#35c987':'#f36570'}"/>${text(x+73,y+20,'TEL '+pc.idx+' → PC '+pc.idx,12)}${text(x+73,y+41,a.pcIp,11)}${text(x+73,y+59,a.pcMode==='wifi'?'Wi-Fi · '+a.ap:'SW'+pc.sw+' / puerto '+pc.port,11)}</g>`;}
+
+ for(const n of [1,2])svg+=box(110+(n-1)*640,450,440,modelName(id,'sw'+n)+' · SW'+n,cm?'LAN + servidores · dos miembros':'VRRP · '+(z.gatewayMaster==='sw'+n?'gateway activo':'respaldo'),'sw'+n,z.switchLocalL2[n]);
+ const peerLinks=p.links.filter(l=>l.role==='LACP_MEMBER'||l.role==='STACK');
+ peerLinks.forEach((link,i)=>{svg+=line(550,478+i*14,750,478+i*14,z.links.includes(link));});
+ svg+=text(650,550,cm?'StackWise central':'Dos enlaces · LACP / RSTP',14);
+ const apCount=cm?4:2;for(let i=1;i<=apCount;i++){const member=cm?Math.ceil(i/2):i,x=cm?80+(i-1)*310:180+(i-1)*640;svg+=line(330+(member-1)*640,520,x+(cm?140:150),575,z.switchLocalL2[member]);svg+=box(x,575,cm?280:300,'AP'+i+' · '+modelName(id,'ap'+i),'Contingencia · SW'+member+' / autenticación','ap'+i,z.switchLocalL2[member]&&z.links.some(l=>l.a==='ap'+i&&l.role==='AP_TRUNK'));}
+ for(const pc of hosts){const group=hosts.filter(h=>h.sw===pc.sw),i=group.findIndex(h=>h.idx===pc.idx),x=30+(pc.sw-1)*650+(i%4)*154,y=680+Math.floor(i/4)*88,a=access(id,pc);const side=pc.sw===1?17:1290;svg+='<path d="M'+(pc.sw===1?110:1190)+' 504 H'+side+' V'+(y-7)+' H'+(x+28)+' V'+y+'" fill="none" stroke="#58a79b" stroke-width="1.6" pointer-events="none"/>';svg+=`<g class="topo-pc c5-pair" role="button" tabindex="0" onclick="openPC('${id}',${pc.idx-1})" onkeydown="if(event.key==='Enter')openPC('${id}',${pc.idx-1})" style="cursor:pointer"><title>${esc(pc.id+' '+a.pcIp+' · '+pc.phoneId+' '+a.phoneIp+' · SW'+pc.sw+' puerto '+pc.port)}</title><rect x="${x}" y="${y}" width="146" height="72" rx="6" fill="#172235" stroke="${a.local?'#35c987':'#f36570'}"/>${text(x+73,y+20,'TEL '+pc.idx+' → PC '+pc.idx,12)}${text(x+73,y+41,a.pcIp,11)}${text(x+73,y+59,a.pcMode==='wifi'?'Wi-Fi · '+a.ap:'SW'+pc.sw+' / puerto '+pc.port,11)}</g>`;}
  const base=700+rows*88;svg+=text(650,base,'Un puerto de acceso por par teléfono → PC; cada equipo usa su propia radio al fallar el cable',13);
  if(cm){for(const [i,n]of ['dc1','dc2','backup'].entries()){
   for(const member of [1,2]){const side=member===1?12:1288,on=z.links.some(l=>l.a===n&&l.b==='sw'+member);svg+=line(member===1?110:1190,485,side,485,on)+line(side,485,side,base+25+member*5,on)+line(side,base+25+member*5,240+i*410,base+25+member*5,on)+line(240+i*410,base+25+member*5,240+i*410,base+55,on);}
