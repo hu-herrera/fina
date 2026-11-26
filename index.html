@@ -29,7 +29,7 @@ body{background:var(--bg);color:var(--text);
   animation:pulse-tb 1.6s ease-in-out infinite;}
 @keyframes pulse-tb{0%,100%{border-bottom-color:var(--red);}50%{border-bottom-color:#ff4040;}}
 .tb-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.tb-logo{font-size:22px;color:var(--accent);}
+.duoc-logo{display:block;width:clamp(110px,12vw,150px);height:auto;background:transparent;flex:none;filter:drop-shadow(0 0 1px #b8cbd8)}
 .tb-brand h1{font-size:13px;font-weight:700;letter-spacing:.3px;line-height:1.2;}
 .tb-brand .sub{font-size:10px;color:var(--text2);}
 .tb-metrics{display:flex;gap:18px;margin-left:auto;}
@@ -512,16 +512,20 @@ body{background:var(--bg);color:var(--text);
 .kpi-sub{font-size:9px;color:var(--gray);margin-top:2px;}
 .legacy-controls,.legacy-services{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.legacy-info{padding:16px;line-height:1.6;color:var(--text)}.legacy-phone{cursor:pointer}.legacy-phone:focus rect{stroke:#fff;stroke-width:3}.legacy-baseline .ping-note{line-height:1.5}
 </style>
-</head>
+<style>
+.client-presenting [data-cellular-demo] #sat-layer,
+.client-presenting [data-cellular-demo] #flow-layer path:not([data-demo-endpoint]),
+.client-presenting [data-cellular-demo="g4"] [data-tower-type="g5"],
+.client-presenting [data-cellular-demo="g5"] [data-tower-type="g4"] { visibility:hidden }
+</style>
+<style>
+.closing-film{width:min(90%,640px);margin:auto;color:#eef5fa;text-align:left;font-family:inherit}.closing-film header{color:#ffc979;letter-spacing:.13em;font-weight:700}.closing-film h2{font-size:clamp(22px,3vw,38px);line-height:1.12;margin:12px 0 28px}.closing-row{position:relative;display:flex;justify-content:space-between;gap:12px;padding:17px 12px;border-bottom:2px solid #526879}.closing-row span{color:#aed4e9}.closing-film[data-phase="1"] .closing-row:after{content:"";position:absolute;bottom:-3px;left:4%;width:9px;height:6px;background:#ffd166;animation:closing-send 2s ease forwards}.closing-film[data-phase="2"] .closing-row:first-of-type span,.closing-film[data-phase="3"] .closing-row:first-of-type span{color:#ffaaa7}.closing-film[data-phase="2"] .closing-row:nth-of-type(2) span,.closing-film[data-phase="3"] .closing-row:nth-of-type(2) span{color:#84dfb8}.closing-film p{line-height:1.5;min-height:3em}@keyframes closing-send{to{left:94%}}@media(prefers-reduced-motion:reduce){.closing-film *:after{animation:none!important}}
+</style><style>.dispatch{width:92%;margin:auto;color:#eef5fa}.dispatch svg{width:100%;height:auto;display:block;margin:1em 0}.dispatch text{font:600 18px system-ui;fill:#e2ecf5}.receipt-box{border-left:4px solid #80cfb4;background:#172a39;padding:15px 20px}.dispatch .receipt-box p{margin:5px 0;font-size:22px}.dispatch-note{min-height:3em;line-height:1.45}</style></head>
 <body>
 
 <header id="topbar">
   <div class="tb-brand">
-    <span class="tb-logo">⬡</span>
-    <div>
-      <h1>Financiera Pacífico</h1>
-      <span class="sub">NOC Dashboard · Simulador WAN</span>
-    </div>
+    <img class="duoc-logo" width="150" height="37" src="assets/duoc-uc.png" alt="Duoc UC">
   </div>
   <div class="tb-metrics">
     <div class="metric">
@@ -1225,6 +1229,7 @@ function renderAntenas(){
   ANTENAS.forEach(a => {
     const marker=document.createElementNS(NS,'g');
     setZoomAwareAntennaMarker(marker,a.x,a.y);
+    marker.setAttribute('data-tower-type',a.tipo);
     const col = a.tipo === 'g5' ? '#3cc878' : '#9070cc';
     const lk = displayLinkStates(a.sedeId);
     const estado = lk[a.tipo];
@@ -1812,7 +1817,7 @@ function animateSats(now=performance.now()){
   SAT_ANIMATION_LAST=now;
   // Freeze decorative map work while the user is reading a console or a modal.
   // WAN availability is derived from the topology model, not from orbital frames.
-  if(document.hidden||document.querySelector('.sm-overlay.vis,.dev-overlay.vis,.moverlay.vis')||
+  if(window.ClientPresentation?.paused||document.hidden||document.querySelector('.sm-overlay.vis,.dev-overlay.vis,.moverlay.vis')||
      !document.getElementById('map-container')?.getClientRects().length){requestAnimationFrame(animateSats);return;}
   const esModoAntes = ST.mode === 'antes';
   syncMapLayersVisibility();
@@ -1884,12 +1889,17 @@ function animateSats(now=performance.now()){
     });
   });
   renderFlowLines();
-  if(typeof PACKET_ANIMATION!=='undefined')PACKET_ANIMATION.updateGeometry?.();
   requestAnimationFrame(animateSats);
 }
 
 const ILUMINACION = {};
 
+function satelliteInMap(x,y){
+  const margin=2;
+  // La cobertura se calcula sobre el mapa nacional, independientemente de la cámara.
+  return x>=margin && x<=MW-margin &&
+         y>=margin && y<=1120-margin;
+}
 function buscarSatelite(sede, tipo) {
   const estado = ST.links[sede.id] ? displayLinkStates(sede.id)[tipo] : 'inactivo';
   if(['caido','inactivo','recuperando'].includes(estado)) return { optimo: null, handover: null };
@@ -1899,6 +1909,7 @@ function buscarSatelite(sede, tipo) {
   let optimo = null, handover = null;
   for(let i = 0; i < posiciones.length; i++){
     const px = posiciones[i][0], py = posiciones[i][1];
+    if(!satelliteInMap(px,py))continue;
     const d = Math.hypot(px - sx, py - sy);
     if(d < fis.radioPrefPx){
       if(!optimo || d < optimo.dist) optimo = { tipo, x: px, y: py, dist: d, idx: i };
@@ -1914,7 +1925,8 @@ function buscarSatelite(sede, tipo) {
     let proximo = null;
     for(let i = 0; i < posiciones.length; i++){
       const px = posiciones[i][0], py = posiciones[i][1];
-      const d = Math.hypot(px - sx, py - sy);
+      if(!satelliteInMap(px,py))continue;
+    const d = Math.hypot(px - sx, py - sy);
       if(d <= continuidad && (!proximo || d < proximo.dist)){
         proximo = { tipo, x: px, y: py, dist: d, idx: i, continuidad: true };
       }
@@ -1952,7 +1964,7 @@ function calcularIluminacion(){
        ST.links[s.id]?.[actual.tipo] !== 'inactivo' &&
        actual.cooldownHasta && AHORA < actual.cooldownHasta){
       const posAnt = SAT_POS[actual.tipo][actual.idx];
-      if(posAnt){
+      if(posAnt && satelliteInMap(...posAnt)){
         const fisAnt = SAT_FISICA[actual.tipo];
         const [sx, sy] = sedePosReal(s);
         const dAnt = Math.hypot(posAnt[0] - sx, posAnt[1] - sy);
@@ -2213,6 +2225,7 @@ function renderFlowLines(){
     let path=document.getElementById(flowId);
     if(!path){path=document.createElementNS(NS,'path');path.id=flowId;fl.appendChild(path);}
     visibleFlows.add(flowId);
+    path.toggleAttribute('data-demo-endpoint',s.id===window.ClientStory?.demoRoute.source || s.id==='cm');
     path.setAttribute('d', `M${pos[0].toFixed(1)},${pos[1].toFixed(1)} Q${ctrlX.toFixed(1)},${ctrlY.toFixed(1)} ${tx.toFixed(1)},${ty.toFixed(1)}`);
     path.setAttribute('fill','none');
     path.setAttribute('stroke', color);
@@ -2835,31 +2848,19 @@ let LAST_MAP_RECT=null;
 function fitMapZoomHeight(){
   const rect=document.getElementById('chile-map').getBoundingClientRect();
   if(!LAST_MAP_RECT||!rect.width||!rect.height)return;
-  // Keep the entire country visible whenever the map changes container or enters the presentation.
-  if(window.ClientPresentation?.active || (ZOOM.w>=299.999&&ZOOM.h>=1119.999)){zoomReset();return;}
   const scale=Math.max(ZOOM.w/LAST_MAP_RECT.width,ZOOM.h/LAST_MAP_RECT.height);
   const cx=ZOOM.x+ZOOM.w/2,cy=ZOOM.y+ZOOM.h/2;
   ZOOM.w=rect.width*scale;ZOOM.h=rect.height*scale;
   ZOOM.x=cx-ZOOM.w/2;ZOOM.y=cy-ZOOM.h/2;
   aplicarZoom();
 }
-function constrainMapView(){
-  // Bounds are the actual geographic SVG canvas, not the entire limitless plane.
-  const extentW=300,extentH=1120;
-  if(![ZOOM.x,ZOOM.y,ZOOM.w,ZOOM.h].every(Number.isFinite)||ZOOM.w<=0||ZOOM.h<=0){
-    Object.assign(ZOOM,{x:0,y:0,w:extentW,h:extentH});
-  }
-  const fit=Math.min(1,extentW/ZOOM.w,extentH/ZOOM.h);
-  if(fit<1){
-    const centerX=ZOOM.x+ZOOM.w/2,centerY=ZOOM.y+ZOOM.h/2;
-    ZOOM.w*=fit;ZOOM.h*=fit;ZOOM.x=centerX-ZOOM.w/2;ZOOM.y=centerY-ZOOM.h/2;
-  }
-  ZOOM.x=ZOOM.w>=extentW-1e-6?0:Math.max(0,Math.min(extentW-ZOOM.w,ZOOM.x));
-  ZOOM.y=ZOOM.h>=extentH-1e-6?0:Math.max(0,Math.min(extentH-ZOOM.h,ZOOM.y));
-}
 function aplicarZoom(){
   const m=document.getElementById('chile-map');if(!m)return;
-  constrainMapView();
+  ZOOM.w=Math.min(300,ZOOM.w);
+  ZOOM.h=Math.min(1120,ZOOM.h);
+  if(ZOOM.w===300 && ZOOM.h>=1120){ZOOM.x=0;ZOOM.y=0;}
+  ZOOM.x=Math.max(0,Math.min(300-ZOOM.w,ZOOM.x));
+  ZOOM.y=Math.max(0,Math.min(1120-ZOOM.h,ZOOM.y));
   m.setAttribute('viewBox',`${ZOOM.x} ${ZOOM.y} ${ZOOM.w} ${ZOOM.h}`);
   const rect=m.getBoundingClientRect();LAST_MAP_RECT={width:rect.width,height:rect.height};
   updateMapMarkerScale();
@@ -2870,8 +2871,9 @@ function mapClientPoint(clientX,clientY){
 }
 function zoomMapAt(clientX,clientY,factor){
   const anchor=mapClientPoint(clientX,clientY);if(!anchor)return;
-  // Maintain the cursor anchor while stopping at the country's full extent.
-  const width=Math.max(ZOOM.minW,Math.min(ZOOM.maxW,ZOOM.w*factor));
+  // Scale both dimensions together, including the initial letterboxed country view.
+  if(factor>1 && ZOOM.w*factor>=300){zoomReset();return;}
+  const width=Math.max(ZOOM.minW,Math.min(Math.max(ZOOM.maxW,ZOOM.w),ZOOM.w*factor));
   const scale=width/ZOOM.w;
   ZOOM.x=anchor.x-(anchor.x-ZOOM.x)*scale;ZOOM.y=anchor.y-(anchor.y-ZOOM.y)*scale;
   ZOOM.w=width;ZOOM.h*=scale;aplicarZoom();
@@ -2886,7 +2888,9 @@ function zoomASede(id){
   ZOOM.h = targetH;
   ZOOM.x = px - targetW/2;
   ZOOM.y = py - targetH/2;
-  aplicarZoom(); // Centralized bounds also apply to the selected sede.
+  ZOOM.x = Math.max(-30, Math.min(330 - ZOOM.w, ZOOM.x));
+  ZOOM.y = Math.max(-30, Math.min(1120 - ZOOM.h, ZOOM.y));
+  aplicarZoom();
 }
 function zoomReset(){
   ZOOM.x = 0; ZOOM.y = 0; ZOOM.w = 300; ZOOM.h = 1120;
@@ -3185,7 +3189,7 @@ function _refresh(){
   rememberTopologyView();
   invalidateSitePing('El estado de la red cambió. Envía otro ping para evaluar la ruta actual.');
   clearPacketSimulation('El estado de la red cambió. Repite el ping para evaluar la ruta actual.');
-  renderMap(); renderFlowLines(); renderAntenas(); updateMetrics();
+  renderMap(); if(ST.mode==='antes')renderFlowLines(); renderAntenas(); updateMetrics();
   if(ST.selId) renderDetail(ST.selId);
   if(SM_TAB==='ping'&&document.getElementById('ping-source-host')){
     const source=document.getElementById('ping-source-host'),value=source.value;
@@ -3487,21 +3491,9 @@ function topologyState(wrap){
   return wrap._topologyState || (wrap._topologyState = { scale: 1, x: 0, y: 0 });
 }
 
-function constrainTopologyView(wrap){
-  const svg=wrap?.querySelector('.topo-svg'),viewport=wrap?.querySelector('.topo-viewport');
-  if(!svg||!viewport||!viewport.clientWidth||!viewport.clientHeight)return;
-  const state=topologyState(wrap),fit=Math.min(1,(viewport.clientWidth-20)/svg.clientWidth,(viewport.clientHeight-20)/svg.clientHeight);
-  state.scale=Number.isFinite(state.scale)?Math.max(fit,Math.min(4,state.scale)):fit;
-  if(!Number.isFinite(state.x))state.x=0;if(!Number.isFinite(state.y))state.y=0;
-  const width=svg.clientWidth*state.scale,height=svg.clientHeight*state.scale;
-  const bound=(offset,content,visible)=>content<=visible?(visible-content)/2:Math.max(visible-content-12,Math.min(12,offset));
-  state.x=bound(state.x,width,viewport.clientWidth);
-  state.y=bound(state.y,height,viewport.clientHeight);
-}
 function applyTopologyTransform(wrap){
   const svg = wrap?.querySelector('.topo-svg');
   if(!svg) return;
-  constrainTopologyView(wrap);
   const state = topologyState(wrap);
   svg.style.transform = `translate(${state.x}px,${state.y}px) scale(${state.scale})`;
   const zoom = wrap.querySelector('.topo-zoom');
@@ -3570,9 +3562,7 @@ function fitSedeTopology(button){
 }
 
 function zoomTopologyAt(wrap,scale,x,y){
-  const viewport=wrap.querySelector('.topo-viewport'),svg=wrap.querySelector('.topo-svg');
-  const fit=Math.min(1,(viewport.clientWidth-20)/svg.clientWidth,(viewport.clientHeight-20)/svg.clientHeight);
-  const state=topologyState(wrap),next=Math.max(fit,Math.min(4,scale)),ratio=next/state.scale;
+  const state=topologyState(wrap),next=Math.max(.15,Math.min(4,scale)),ratio=next/state.scale;
   state.x=x-(x-state.x)*ratio;state.y=y-(y-state.y)*ratio;state.scale=next;
   applyTopologyTransform(wrap);
   rememberTopologyView();
@@ -4609,11 +4599,10 @@ function handleTermCmd(ev,sedeId,pcIdx){
   };
   addLine(pc.id+'> '+cmd,'term-prompt');
   const lower=cmd.toLowerCase().replace(/\s+/g,' ');
-  if(window.C5App?.enabled()){const result=C5App.pcCommand(sedeId,pc,cmd);if(result!==null){addLine(result);return;}}
   if(['clear','cls'].includes(lower)){session.lines=[];out.replaceChildren();return;}
   if(['help','?'].includes(lower)){
     const localConsole=window.C5App?.enabled()?(s.id==='cm'?'console fwa|fwb|sw1|sw2':'console r1|r2|sw1|sw2'):'console router|sw1|sw2|fw';
-    addLine('ipconfig [/all|/release|/renew] · nslookup <nombre> · curl https://app.financiera.test · sip register · sip call · sim transaction <ID> · hostname · ping <IP> · tracert <IP> · route print · arp -a\n'+localConsole+' (PC 001, cable de laboratorio)\nssh [-l usuario] [usuario@]<IP> (sujeto a conectividad y políticas)\nclear / cls · ↑ / ↓ historial\nSimulación de comandos; no ejecuta Windows, SSH ni IOS reales.');
+    addLine('ipconfig [/all] · hostname · ping <IP> · tracert <IP> · route print · arp -a\n'+localConsole+' (PC 001, cable de laboratorio)\nssh [-l usuario] [usuario@]<IP> (sujeto a conectividad y políticas)\nclear / cls · ↑ / ↓ historial\nSimulación de comandos; no ejecuta Windows, SSH ni IOS reales.');
   }else if(lower==='hostname')addLine(pc.id);
   else if(lower==='ipconfig'||lower==='ipconfig /all'){
     const c5=window.C5App?.enabled(),a=c5?C5App.access(s.id,pc):null;
@@ -6219,18 +6208,17 @@ function getWanEndpoint(s, refresh = true){
           : `🛰 ${LK_NAME[linkType]} LEO`;
       })(),
       point: [currentIllumination.x, currentIllumination.y],
-      anchorId: (()=>{const m=SAT_META[linkType][currentIllumination.idx];return m?`sat-${m.trainId}-${m.index}`:null;})(),
     };
     const satellite = buscarSatelite(s, linkType);
     const selected = satellite.optimo || satellite.handover;
-    if(selected){const m=SAT_META[linkType][selected.idx];return {type:linkType,label:`🛰 ${LK_NAME[linkType]} LEO`,point:[selected.x,selected.y],anchorId:m?`sat-${m.trainId}-${m.index}`:null};}
+    if(selected) return { type: linkType, label: `🛰 ${LK_NAME[linkType]} LEO`, point: [selected.x, selected.y] };
   }
   if(linkType === 'g5' || linkType === 'g4'){
     const antenna = ANTENAS
       .filter(a => a.sedeId === s.id && a.tipo === linkType)
       .sort((a, b) => Math.hypot(a.x - sedePos(s)[0], a.y - sedePos(s)[1]) -
         Math.hypot(b.x - sedePos(s)[0], b.y - sedePos(s)[1]))[0];
-    if(antenna) return { type: linkType, label: `📡 ${LK_NAME[linkType]} — ${antenna.city}`, point: [antenna.x, antenna.y], antennaId:antenna.id };
+    if(antenna) return { type: linkType, label: `📡 ${LK_NAME[linkType]} — ${antenna.city}`, point: [antenna.x, antenna.y] };
   }
   return { type: linkType, label: LK_NAME[linkType] || 'Sin ruta', point: sedePos(s) };
 }
@@ -6613,12 +6601,19 @@ function fitPingRoute(hops){
   if(window.ClientPresentation?.active){for(const id of [ClientStory.demoRoute.source,ClientStory.demoRoute.destination,'cm']){const point=sedePos(SEDES.find(s=>s.id===id));xs.push(point[0]);ys.push(point[1]);}}
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
   const aspect=document.getElementById('map-container').getBoundingClientRect();
-  // Presentation panels must show the complete network footprint, even during ping animation.
-  if(window.ClientPresentation?.active){zoomReset();return;}
+  if(window.ClientPresentation?.active){
+    ZOOM.w=Math.max(80,maxX-minX+60,(maxY-minY+90)*aspect.width/Math.max(aspect.height,1));
+    ZOOM.h=Math.max(maxY-minY+90,mapZoomHeight(ZOOM.w));ZOOM.w=Math.min(300,ZOOM.w);ZOOM.x=(minX+maxX)/2-ZOOM.w/2;ZOOM.y=(minY+maxY)/2-ZOOM.h/2;
+    aplicarZoom();return;
+  }
   // Reserve the right side for the trace card, instead of hiding the route behind it.
   const reserve=aspect.width>700?0.55:0.85;
   const width=Math.max(36,(maxX-minX+12)/reserve,(maxY-minY+12)*aspect.width/Math.max(aspect.height,1));
-  if(width>ZOOM.maxW){zoomReset();return;}
+  if(width>ZOOM.maxW){
+    ZOOM.w=ZOOM.maxW;ZOOM.h=Math.max(mapZoomHeight(ZOOM.w),maxY-minY+24);
+    ZOOM.x=(minX+maxX)/2-ZOOM.w/2;ZOOM.y=(minY+maxY)/2-ZOOM.h/2;
+    aplicarZoom();return;
+  }
   ZOOM.w=width;ZOOM.h=mapZoomHeight(ZOOM.w);
   ZOOM.x=(minX+maxX)/2-ZOOM.w*(aspect.width>700?0.3:0.5);
   ZOOM.y=(minY+maxY)/2-ZOOM.h*(aspect.width>700?0.5:0.24);
@@ -6631,15 +6626,6 @@ function renderMapPingPolicyActions(result){
   const button=document.createElement('button');button.type='button';button.className='btn btn-b';
   button.textContent=allowed?'Quitar excepción ICMP y repetir':'Permitir solo este par ICMP y repetir';
   button.onclick=()=>toggleMapPingDiagnostic(!allowed);actions.append(button);
-}
-function packetHopPoint(hop){
-  const satellite=hop.id.startsWith('sat:')?hop.id.split(':'):null;
-  const anchorId=hop.anchorId||(satellite?`sat-${satellite[2]}-${satellite[3]}`:null);
-  const matrix=anchorId?document.getElementById(anchorId)?.transform.baseVal.getItem(0)?.matrix:null;
-  if(matrix)return [matrix.e,matrix.f];
-  const antennaId=hop.antennaId||(hop.id.startsWith('ant:')?hop.id.slice(4):null);
-  const antenna=antennaId?ANTENAS.find(a=>a.id===antennaId):null;
-  return antenna?[antenna.x,antenna.y]:hop.point;
 }
 function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const layer=document.getElementById('packet-layer');if(!layer)return;
@@ -6661,7 +6647,21 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const NS='http://www.w3.org/2000/svg';
   const svg=(tag,attrs)=>{const el=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);layer.append(el);return el;};
   const displayHops=hops.length?hops:result.blockedRoute?.length?result.blockedRoute:[simulationNode('drop',result.srcPc?.id||src.code,sedePos(src),'drop')];
-  for(const hop of displayHops){const li=document.createElement('li');li.textContent=hop.label;steps.append(li);}
+  const eventView=window.ClientPresentation?.active && document.getElementById('story-wan-next')?.hidden===false;
+  if(eventView && ok){
+    const appendEvent=(from,to,reply)=>{
+      const li=document.createElement('li');
+      const protocol=document.createElement('b');
+      protocol.textContent=reply?'↩ ICMP · Respuesta':'→ ICMP · Solicitud';
+      protocol.style.color=reply?'#83ceff':'#ffce79';
+      li.append(protocol,document.createElement('br'),from.label+' → '+to.label);
+      steps.append(li);
+    };
+    for(let i=1;i<hops.length;i++)appendEvent(hops[i-1],hops[i],false);
+    for(let i=hops.length-1;i>0;i--)appendEvent(hops[i],hops[i-1],true);
+  }else{
+    for(const hop of displayHops){const li=document.createElement('li');li.textContent=hop.label;steps.append(li);}
+  }
   fitPingRoute(displayHops);
   if(!ok||hops.length<2){
     updatePingTrace('Descartado',routeText,result.reason||'Sin ruta activa disponible');
@@ -6674,6 +6674,26 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const path=svg('path',{d:hops.map((h,i)=>(i?'L':'M')+h.point.join(',')).join(' '),
     class:'packet-route packet-route-ok','vector-effect':'non-scaling-stroke',style:'stroke-width:3;stroke-dasharray:7 5;'});
   const dot=svg('circle',{r:1,fill:'#ffd166',class:'packet-dot','vector-effect':'non-scaling-stroke'});
+  const cellularDemo=document.getElementById('map-container').dataset.cellularDemo;
+  if(cellularDemo){
+    for(const site of [src,dest]){
+      const tower=ANTENAS.find(a=>a.sedeId===site.id && a.tipo===cellularDemo);
+      if(!tower)continue;
+      const scale=1/(document.getElementById('chile-map').getScreenCTM()?.a||1);
+      const color=cellularDemo==='g5'?'#64eda7':'#c89cff';
+      const badge=svg('g',{transform:'translate('+tower.x+' '+tower.y+') scale('+scale+')',stroke:color,'stroke-width':2,fill:'none'});
+      badge.innerHTML='<path d="M0 0 L-22 24"/><circle cx="-25" cy="27" r="17" fill="#101826"/><path d="M-31 36 L-25 22 L-19 36 M-28 30 H-22 M-33 20 Q-37 24 -33 28 M-17 20 Q-13 24 -17 28"/><circle cx="-25" cy="22" r="2" fill="currentColor"/>';
+      const label=svg('text',{x:tower.x,y:tower.y,dx:-25*scale,dy:58*scale,'text-anchor':'middle',fill:color,'font-size':13*scale,'font-weight':700,stroke:'#101826','stroke-width':3*scale,'paint-order':'stroke'});
+      label.textContent=cellularDemo==='g5'?'Antena Entel 5G':'Antena WOM 4G';
+    }
+  }
+  const satName = {starlink:'Starlink',kuiper:'Leo'}[activeLink(src.id)];
+  const carrierCloud = window.ClientPresentation?.active && ST.mode==='despues' && (satName || cellularDemo)
+    ? svg('g',{'pointer-events':'none',display:'none'}) : null;
+  if(carrierCloud){
+    carrierCloud.innerHTML='<path d="M-27 10 C-42 10 -42 -9 -29 -10 C-27 -25 -7 -27 0 -15 C10 -22 23 -16 24 -7 C40 -6 39 10 26 10Z" fill="#19364a" stroke="#9cd8f5" stroke-width="2"/><text y="27" text-anchor="middle" fill="#eef8ff" stroke="#101820" stroke-width="3" paint-order="stroke" font-size="13"></text>';
+    carrierCloud.lastElementChild.textContent='Red '+(cellularDemo==='g5'?'Entel':cellularDemo==='g4'?'WOM':satName);
+  }
   const markers=hops.map(h=>svg('circle',{cx:h.point[0],cy:h.point[1],r:0.5,fill:'#9fb4cc'}));
   const endpointLabels=window.ClientPresentation?.active?[src,dest].map((s,i)=>{
     const label=svg('text',{x:sedePos(s)[0],y:sedePos(s)[1],fill:i?'#65c8ff':'#ffd166','font-weight':'700','paint-order':'stroke',stroke:'#0a111a','stroke-linejoin':'round','class':'packet-endpoint-label'});
@@ -6684,48 +6704,87 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
   const playback=Number.isFinite(window.PING_PLAYBACK_SPEED)?Math.max(1,Math.min(4,window.PING_PLAYBACK_SPEED)):1;
   const segmentMs=650/playback,segments=(hops.length-1)*2;
   const matrix=document.getElementById('chile-map').getScreenCTM(),pixelsPerUnit=matrix?Math.hypot(matrix.a,matrix.b):1;
-  const durations=hops.slice(1).map((h,i)=>{const distance=Math.hypot(h.point[0]-hops[i].point[0],h.point[1]-hops[i].point[1])*pixelsPerUnit;return window.ClientPresentation?.active?Math.max(distance>40?1200:360,Math.min(3500,distance*7)):segmentMs;});
-  const visualScale=window.ClientPresentation?.active?Math.min(1,20000/(2*durations.reduce((a,b)=>a+b,0))):1;
-  const paced=durations.map(d=>d*visualScale),roundTrip=[...paced,...paced.slice().reverse()],ends=[];let totalMs=0;
+  const durations=hops.slice(1).map((h,i)=>carrierCloud && h.id.startsWith('wan:') && hops[i].id.startsWith('wan:') ? 3200 : window.ClientPresentation?.active?Math.max(360,Math.min(3500,Math.hypot(h.point[0]-hops[i].point[0],h.point[1]-hops[i].point[1])*pixelsPerUnit*7)):segmentMs);
+  const roundTrip=[...durations,...durations.slice().reverse()],ends=[];let totalMs=0;
   for(const duration of roundTrip){totalMs+=duration;ends.push(totalMs);}
-  state.index=0;state.target=1;state.fraction=0;
-  state.updateGeometry=()=>{
-    const points=hops.map(packetHopPoint);
-    path.setAttribute('d',points.map((p,i)=>(i?'L':'M')+p.join(',')).join(' '));
-    markers.forEach((m,i)=>{m.setAttribute('cx',points[i][0]);m.setAttribute('cy',points[i][1]);});
-    const a=points[state.index],b=points[state.target];
-    dot.setAttribute('cx',a[0]+(b[0]-a[0])*state.fraction);dot.setAttribute('cy',a[1]+(b[1]-a[1])*state.fraction);
-  };
   function frame(now){
     if(PACKET_ANIMATION!==state)return;
-    if(!state.paused)state.elapsed=Math.min(totalMs,state.elapsed+Math.max(0,now-state.lastTime));
+    if(!state.paused&&!window.ClientPresentation?.paused)state.elapsed=Math.min(totalMs,state.elapsed+Math.max(0,now-state.lastTime));
     state.lastTime=now;
     const segment=state.elapsed>=totalMs?segments:ends.findIndex(end=>state.elapsed<end),back=segment>=hops.length-1;
     const index=Math.max(0,Math.min(hops.length-1,back?segments-segment:segment));
     const target=Math.max(0,Math.min(hops.length-1,index+(back?-1:1))),fraction=segment>=segments?0:(state.elapsed-(segment?ends[segment-1]:0))/roundTrip[segment];
-    state.index=index;state.target=target;state.fraction=fraction;state.updateGeometry();
+    // The presentation reuses the visible access beam, including its curvature
+    // and the satellite selected by the latest map update.
+    const liveAccess = window.ClientPresentation?.active && ST.mode !== 'antes' &&
+      hops.some(hop => hop.id.startsWith('wan:'));
+    let beamPoint = null;
+    if(liveAccess){
+      const from = hops[index], to = hops[target];
+      const provider = [from,to].find(hop => hop.id.startsWith('wan:'));
+      const local = provider === from ? to : from;
+      const siteId = provider?.id.slice(4);
+      const beam = siteId && local.id.startsWith('site:'+siteId+':')
+        ? document.getElementById('flow-link-'+siteId) : null;
+      path.setAttribute('d',beam?.getAttribute('d') || '');
+      if(beam){
+        const end=beam.getPointAtLength(beam.getTotalLength());
+        if(!cellularDemo && !satelliteInMap(end.x,end.y)){path.setAttribute('d','');dot.style.display='none';state.raf=requestAnimationFrame(frame);return;}
+        const progress = provider === from ? 1-fraction : fraction;
+        beamPoint = beam.getPointAtLength(beam.getTotalLength()*progress);
+      }
+      let carrierTransit=false;
+      if(carrierCloud){
+        const crossing=from.id.startsWith('wan:') && to.id.startsWith('wan:');
+        carrierCloud.setAttribute('display',crossing?'inline':'none');
+        if(crossing){
+          const tips=[from,to].map(h=>{
+            const link=document.getElementById('flow-link-'+h.id.slice(4));
+            return link?.getPointAtLength(link.getTotalLength());
+          });
+          if(tips.every(pt=>pt && (cellularDemo || satelliteInMap(pt.x,pt.y)))){
+            const [start,end]=tips;
+            const unit=1/(document.getElementById('chile-map').getScreenCTM()?.a||1);
+            const x=ZOOM.x+ZOOM.w*.52, y=(start.y+end.y)/2;
+            carrierCloud.setAttribute('transform','translate('+x+' '+y+') scale('+unit+')');
+            path.setAttribute('d','M'+start.x+' '+start.y+' L'+x+' '+y+' L'+end.x+' '+end.y);
+            beamPoint=path.getPointAtLength(path.getTotalLength()*fraction);
+            layer.append(dot);
+            carrierTransit=true;
+          }else carrierCloud.setAttribute('display','none');
+        }
+      }
+      dot.style.display = provider && !beam && !carrierTransit ? 'none' : '';
+      markers.forEach(marker => marker.style.display='none');
+    }
+    if(cellularDemo){
+      const packet=document.getElementById('mobile-route-packet');
+      const position=hop=>hop.id==='wan:'+src.id?117:hop.id==='wan:'+dest.id?313:hop.id.startsWith('site:'+dest.id+':')||hop===hops.at(-1)||hops.indexOf(hop)>hops.findIndex(h=>h.id==='wan:'+dest.id)?390:40;
+      if(packet){
+        const start=position(hops[index]),end=position(hops[target]);
+        packet.setAttribute('cx',start+(end-start)*fraction);
+        packet.setAttribute('fill',back?'#65c8ff':'#ffd166');
+      }
+    }
+    const a=hops[index].point,b=hops[target].point;
     const matrix=document.getElementById('chile-map').getScreenCTM();
     const scale=matrix?1/Math.hypot(matrix.a,matrix.b):1;
-
+    dot.setAttribute('cx',beamPoint?.x ?? a[0]+(b[0]-a[0])*fraction);dot.setAttribute('cy',beamPoint?.y ?? a[1]+(b[1]-a[1])*fraction);
     dot.setAttribute('r',(window.ClientPresentation?.active?7:5)*scale);dot.setAttribute('fill',back?'#65c8ff':'#ffd166');
     if(window.ClientPresentation?.active){path.style.stroke=back?'#65c8ff':'#ffd166';path.style.opacity='.95';}
-    endpointLabels.forEach(label=>{
-      label.setAttribute('font-size',14*scale);label.setAttribute('stroke-width',4*scale);label.setAttribute('dx',12*scale);label.setAttribute('dy',-8*scale);
-      if(ZOOM.w>=299.999&&ZOOM.h>=1119.999){
-        const box=label.getBoundingClientRect(),frame=document.getElementById('chile-map').getBoundingClientRect(),pad=8;
-        const dx=Math.max(0,frame.left+pad-box.left)-Math.max(0,box.right-frame.right+pad);
-        const dy=Math.max(0,frame.top+pad-box.top)-Math.max(0,box.bottom-frame.bottom+pad);
-        label.setAttribute('dx',(12+dx)*scale);label.setAttribute('dy',(-8+dy)*scale);
-      }
-    });
+    endpointLabels.forEach(label=>{label.setAttribute('font-size',14*scale);label.setAttribute('stroke-width',4*scale);label.setAttribute('dx',12*scale);label.setAttribute('dy',-8*scale);});
     markers.forEach((marker,i)=>{marker.setAttribute('r',(i===index?5:2)*scale);marker.setAttribute('fill',i===index?'#ffd166':'#9fb4cc');});
     const key=(back?'reply:':'request:')+index+':'+state.paused;
     if(state.lastStep!==key){
       state.lastStep=key;
       updatePingTrace(state.paused?'Pausado':back?'Respuesta en tránsito':'En tránsito',routeText,
         (back?'Respuesta':'Solicitud')+' · paso '+(index+1)+'/'+hops.length+': '+hops[index].label);
-      [...steps.children].forEach((li,i)=>{li.classList.toggle('passed',back||i<index);if(i===index)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');});
-      const current=steps.children[index];
+      const selected=eventView?Math.min(segment,segments-1):index;
+      [...steps.children].forEach((li,i)=>{
+        li.classList.toggle('passed',eventView?i<segment:back||i<index);
+        if(i===selected)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');
+      });
+      const current=steps.children[selected];
       if(current){const top=current.offsetTop-steps.offsetTop;if(top<steps.scrollTop||top>steps.scrollTop+steps.clientHeight-25)steps.scrollTop=top;}
     }
     if(state.elapsed>=totalMs){
@@ -6735,7 +6794,7 @@ function animatePacket(srcId,destId,linkType,ok,route,detailedRoute,result){
       addLog('ICMP reply simulado '+dest.code+' → '+src.code+' · RTT estimado '+result.rtt+' ms','ok');
       return;
     }
-    if(!state.paused)state.raf=requestAnimationFrame(frame);
+    if(!state.paused || liveAccess)state.raf=requestAnimationFrame(frame);
   }
   state.frame=frame;state.segmentMs=segmentMs;state.ends=ends;state.totalMs=totalMs;
   updatePingTrace('En tránsito',routeText,'Solicitud · paso 1/'+hops.length+': '+hops[0].label);
@@ -6937,21 +6996,21 @@ addLog('Modo DESPUÉS: 23 sedes + 4 enlaces inalámbricos + satélites LEO','ok'
 addLog('Base ANTES cargada: routers, switches PoE, teléfonos IP y datacenter existentes','warn');
 addLog('Click en sede/satélite/torre/proveedor → modal de configuración','ok');
 </script>
-<script src="./network/c5-data.js?v=cierre-20261027-r2"></script>
+<script src="./network/c5-data.js?v=local-20261201"></script>
 <script src="./network/legacy-inventory.js"></script>
-<script src="./network/legacy-baseline.js?v=cierre-20261027-r2"></script>
+<script src="./network/legacy-baseline.js?v=public-20261024"></script>
 <script src="./network/c4-data.js"></script>
 <script src="./network/c4-model.js"></script>
 <script src="./network/c4-app.js"></script>
-<script src="./network/c5-protocols.js?v=operacion-20261028-r1"></script>
-<script src="./network/c5-model.js?v=operacion-20261028-r1"></script>
-<script src="./network/c5-security.js?v=operacion-20261028-r1"></script>
-<script src="./network/c5-device-config.js?v=operacion-20261028-r1"></script>
-<script src="./network/c5-console.js?v=operacion-20261028-r1"></script>
-<script src="./network/c5-app.js?v=avance-20261029-r2"></script>
-<link rel="stylesheet" href="./network/client-presentation.css?v=avance-20261029-r2">
-<script src="./network/client-story.js?v=avance-20261029-r2"></script>
-<script src="./network/client-presentation.js?v=avance-20261029-r2"></script>
-<script src="./network/packet-workbench.js?v=cierre-20261027-r2"></script>
+<script src="./network/c5-model.js?v=public-20261024"></script>
+<script src="./network/c5-security.js?v=public-20261024"></script>
+<script src="./network/c5-device-config.js?v=local-20261201"></script>
+<script src="./network/c5-app.js?v=local-20261201"></script>
+<link rel="stylesheet" href="./network/client-presentation.css?v=logo-2">
+<script src="./network/client-story.js?v=local-20261201"></script>
+<script src="./network/client-presentation.js?v=logo-2"></script>
+<script src="./network/packet-workbench.js?v=client-20261023"></script>
 </body>
 </html>
+
+
