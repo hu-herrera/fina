@@ -131,7 +131,6 @@ function startClosingTraffic(){
    }
    frame=requestAnimationFrame(draw);
  }
- $('story-result').textContent='Tráfico simulado · Starlink, Amazon Leo, Entel 5G y WOM 4G · Amarillo: ida · Verde: vuelta · Celeste punteado: tránsito entre accesos';
  frame=requestAnimationFrame(draw);
  stopClosingTraffic=()=>{cancelAnimationFrame(frame);layer.remove();stopClosingTraffic=()=>{};};
 }
