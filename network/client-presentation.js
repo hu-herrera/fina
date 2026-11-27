@@ -308,13 +308,22 @@ function closingFilm(){
      const [x,y]=sedePos(s),example=s.id===route().source;
      const ok=evaluateMapPing(s.id,'cm',getPCs(s)[0].ip,getPCs(central)[0].ip).ok;
      add(sites,'circle',{cx:x,cy:y,r:step===3?6:3,fill:ok?'#a2ede0':'#ff9079'});
-     if(!example)continue;
+     if(!example){
+       if(step===3){
+         const bend=Math.min(15,Math.abs(y-pole[1])*0.08);
+         const controlX=(x+pole[0])/2+bend,controlY=(y+pole[1])/2;
+         const link=add(routes,'path',{d:'M'+x+' '+y+' Q'+controlX+' '+controlY+' '+pole.join(' '),fill:'none',stroke:'#ed9586','stroke-width':1.3,opacity:0.78,'vector-effect':'non-scaling-stroke','data-office':s.id});
+         add(link,'title',{},s.city+' · MPLS hacia Casa Matriz interrumpido');
+       }
+       continue;
+     }
 
      const landmarks=[[-18.7,-70.2],[-19.9,-69.8],[-22.45,-69.65],[-24.8,-69.85],[-27.35,-70.3],[-29.9,-70.95],[-31.5,-71.05]].map(([lat,lon])=>project(lat,lon));
      const full=[[x,y],...landmarks,pole,[cx,cy]];
      const trip=ok?full:step===3?full.slice(0,-1):full.slice(0,3);
      const end=trip[trip.length-1],line=pts=>'M'+pts.map(p=>p.join(' ')).join(' L');
-     add(routes,'path',{d:line(full),fill:'none',stroke:'#9ab7c4','stroke-width':2,'stroke-dasharray':'4 3'});
+     add(routes,'path',{'data-office':s.id,d:line(full),fill:'none',stroke:'#9ab7c4','stroke-width':2,'stroke-dasharray':'4 3'});
+     
      if(step){
        const packet=add(sites,'circle',{r:step===3?10:7,fill:'#ffdb78',stroke:'#162335','stroke-width':2});
        function send(points,arrived){
@@ -332,6 +341,7 @@ function closingFilm(){
      if(!ok&&example)add(sites,'text',{x:end[0]-9,y:end[1]+8,fill:'#ff866e','font-size':32},'×');
      if(example)add(sites,'text',{x:x+12,y:y+6,fill:'white','font-size':23},'Arica');
    }
+   if(step===3)routes.append(routes.querySelector('[data-office="'+route().source+'"]'));
    for(const offset of [-4,4])add(routes,'path',{d:'M'+pole.join(' ')+' Q'+(cx+offset*3)+' '+(cy-25)+' '+cx+' '+cy,fill:'none',stroke:step===3?'#ff846b':'#ffdc95','stroke-width':3});
    add(sites,'circle',{cx,cy,r:8,fill:'#ffe7a8'});
    add(sites,'text',{x:cx+14,y:cy+8,fill:'white','font-size':24},'Casa Matriz');
